@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Krallıkların Terazisi - Ana Menü</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="menu-style.css">
+</head>
+
+<body>
+    <div class="menu-container">
+        <div class="menu-card">
+            <h1 class="game-title">
+                <span class="crown">👑</span>
+                Krallıkların Terazisi
+                <span class="crown">👑</span>
+            </h1>
+            <p class="subtitle">v2.0 - Dijital Masa Oyunu</p>
+
+            <div class="player-selection">
+                <h2>Oyuncu Sayısı Seçin</h2>
+                <div class="player-buttons">
+                    <button class="player-btn" data-players="2">
+                        <span class="player-icon">👥</span>
+                        <span class="player-count">2 Oyuncu</span>
+                    </button>
+                    <button class="player-btn" data-players="3">
+                        <span class="player-icon">👥👤</span>
+                        <span class="player-count">3 Oyuncu</span>
+                    </button>
+                    <button class="player-btn" data-players="4">
+                        <span class="player-icon">👥👥</span>
+                        <span class="player-count">4 Oyuncu</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="selected-info" id="selected-info" style="display: none;">
+                <p>Seçilen: <strong id="selected-count">2</strong> Oyuncu</p>
+
+                <div class="bot-selection-inline">
+                    <h3 style="font-size: 1rem; margin-bottom: 10px; color: var(--color-gold);">🤖 Bot Sayısı</h3>
+                    <div class="bot-buttons-inline">
+                        <button class="bot-btn-small selected" data-bots="0">0</button>
+                        <button class="bot-btn-small" data-bots="1">1</button>
+                        <button class="bot-btn-small" data-bots="2">2</button>
+                        <button class="bot-btn-small" data-bots="3">3</button>
+                    </div>
+                </div>
+
+                <button class="start-btn" id="start-game">
+                    ⚔️ Oyunu Başlat
+                </button>
+            </div>
+
+            <div class="menu-footer">
+                <button class="secondary-btn" onclick="showRules()">📜 Kurallar</button>
+                <button class="secondary-btn" onclick="showCredits()">ℹ️ Hakkında</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedPlayers = 2;
+        let selectedBots = 0;
+
+        // Player selection
+        document.querySelectorAll('.player-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectedPlayers = parseInt(btn.dataset.players);
+
+                // Update UI
+                document.querySelectorAll('.player-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+
+                // Update bot buttons based on player count
+                updateBotButtons();
+                updateSelection();
+            });
+        });
+
+        // Bot selection
+        document.querySelectorAll('.bot-btn-small').forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectedBots = parseInt(btn.dataset.bots);
+
+                // Update UI
+                document.querySelectorAll('.bot-btn-small').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+
+                updateSelection();
+            });
+        });
+
+        function updateBotButtons() {
+            const maxBots = selectedPlayers - 1; // At least 1 human player
+            const botButtons = document.querySelectorAll('.bot-btn-small');
+
+            botButtons.forEach(btn => {
+                const botCount = parseInt(btn.dataset.bots);
+                if (botCount > maxBots) {
+                    btn.style.display = 'none';
+                } else {
+                    btn.style.display = 'inline-block';
+                }
+            });
+
+            // Reset bot selection if current selection is invalid
+            if (selectedBots > maxBots) {
+                selectedBots = 0;
+                document.querySelectorAll('.bot-btn-small').forEach(b => b.classList.remove('selected'));
+                document.querySelector('.bot-btn-small[data-bots="0"]').classList.add('selected');
+            }
+        }
+
+        function updateSelection() {
+            const totalPlayers = selectedPlayers;
+            const humanPlayers = selectedPlayers - selectedBots;
+
+            // Validate: bots can't exceed total players - 1 (at least 1 human)
+            if (selectedBots >= selectedPlayers) {
+                alert(`❌ En az 1 insan oyuncu olmalı!\n\nToplam: ${selectedPlayers} oyuncu\nBot: ${selectedBots}\n\nBot sayısını azaltın.`);
+                return;
+            }
+
+            document.getElementById('selected-count').textContent = `${humanPlayers} İnsan + ${selectedBots} Bot`;
+            document.getElementById('selected-info').style.display = 'block';
+        }
+
+        // Start game
+        document.getElementById('start-game').addEventListener('click', () => {
+            // Validate
+            if (selectedBots >= selectedPlayers) {
+                alert('En az 1 insan oyuncu olmalı!');
+                return;
+            }
+
+            // Save to localStorage
+            localStorage.setItem('playerCount', selectedPlayers);
+            localStorage.setItem('botCount', selectedBots);
+
+            // Navigate to game
+            window.location.href = 'game.html';
+        });
+
+        function showRules() {
+            alert('Kurallar ekranı yakında eklenecek!');
+        }
+
+        function showCredits() {
+            alert('Krallıkların Terazisi v2.0\\n\\nTasarım: CIHAN\\nGeliştirme: Antigravity AI\\n\\n2025');
+        }
+    </script>
+</body>
+
+</html>

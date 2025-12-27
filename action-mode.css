@@ -1,0 +1,63 @@
+/* Action Mode Panel */
+.action-mode-panel {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    justify-content: flex-start;
+}
+
+.action-mode-btn {
+    flex: 1;
+    padding: 10px;
+    font-size: 1.2rem;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(0, 0, 0, 0.3);
+    min-width: 50px;
+}
+
+.action-mode-btn.demolish {
+    color: #fca5a5;
+    border-color: rgba(220, 38, 38, 0.5);
+}
+
+.action-mode-btn.attack {
+    color: #fde047;
+    border-color: rgba(234, 179, 8, 0.5);
+}
+
+.action-mode-btn:hover {
+    transform: scale(1.1);
+    filter: brightness(1.2);
+}
+
+.action-mode-btn.active {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px currentColor;
+    border-width: 3px;
+    animation: pulse-glow-action 1.5s ease-in-out infinite;
+}
+
+.action-mode-btn.demolish.active {
+    background: rgba(220, 38, 38, 0.3);
+    border-color: #dc2626;
+}
+
+.action-mode-btn.attack.active {
+    background: rgba(234, 179, 8, 0.3);
+    border-color: #eab308;
+}
+
+@keyframes pulse-glow-action {
+
+    0%,
+    100% {
+        box-shadow: 0 0 15px currentColor;
+    }
+
+    50% {
+        box-shadow: 0 0 30px currentColor;
+    }
+}

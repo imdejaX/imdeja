@@ -1,0 +1,58 @@
+/* Turn Notification Popup */
+.turn-notification {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 20, 30, 0.95) 100%);
+    border: 3px solid var(--color-gold);
+    border-radius: 12px;
+    padding: 30px 50px;
+    z-index: 9999;
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(251, 191, 36, 0.3);
+    animation: turnNotificationFadeIn 0.3s ease-out;
+    text-align: center;
+}
+
+.turn-notification h2 {
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    color: var(--color-gold);
+    margin: 0 0 10px 0;
+    text-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+}
+
+.turn-notification p {
+    font-size: 1.5rem;
+    color: var(--color-text-main);
+    margin: 0;
+    font-weight: 600;
+}
+
+.turn-notification.fade-out {
+    animation: turnNotificationFadeOut 0.3s ease-in forwards;
+}
+
+@keyframes turnNotificationFadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes turnNotificationFadeOut {
+    from {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+}

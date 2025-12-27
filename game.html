@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Krallıkların Terazisi v2.0</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="modal.css">
+    <link rel="stylesheet" href="dice.css">
+    <link rel="stylesheet" href="dice-prompt.css">
+    <link rel="stylesheet" href="action-mode.css">
+    <link rel="stylesheet" href="attack-notification.css">
+    <link rel="stylesheet" href="attack-result.css">
+    <link rel="stylesheet" href="tech-card.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Background Elements -->
+        <div class="bg-overlay"></div>
+
+        <!-- Top Bar: Global Status -->
+        <header id="game-header">
+            <div class="header-left">
+                <button id="home-btn" class="btn-home" title="Anasayfaya Dön">🏠</button>
+                <div class="logo">👑 Kralların Terazisi</div>
+            </div>
+            <div class="header-center">
+                <div id="turn-indicator" class="turn-indicator"></div>
+            </div>
+            <div class="header-right">
+                <div id="gold-display" class="gold-display"></div>
+                <button id="market-btn" class="btn-market">PAZAR YERİ</button>
+                <button id="end-turn-btn" class="btn-end-turn">TURU BİTİR</button>
+            </div>
+        </header>
+
+        <!-- Main Game Area -->
+        <main class="game-board">
+
+            <!-- Player Areas (Dynamically rendered) -->
+            <div id="players-container" class="players-grid">
+                <!-- Players will be injected here via JS -->
+            </div>
+
+        </main>
+
+        <!-- Modals -->
+        <dialog id="combat-modal" class="modal">
+            <!-- Combat UI -->
+        </dialog>
+
+        <dialog id="market-modal" class="modal">
+            <div class="modal-content market-modal-content">
+                <div class="modal-header">
+                    <h2>🏪 Pazar Yeri</h2>
+                    <div class="player-resources-display">
+                        <span class="resource-item">💰 <span id="market-player-gold">0</span></span>
+                        <span class="resource-item">👥 <span id="market-player-capacity">0/0</span></span>
+                        <span class="resource-item">🔄 <span id="market-refresh-count">2</span></span>
+                    </div>
+                    <button class="icon-btn refresh-btn" id="refresh-market-btn" title="Pazarı Yenile">🔄</button>
+                    <button class="icon-btn" id="close-market-btn">✖️</button>
+                </div>
+                <div class="market-info">
+                    <p>Her tur market yenilenir. Paralı askerler veya teknolojiler satın alabilirsin.</p>
+                </div>
+                <!-- Renderer buraya kartları basacak -->
+                <div id="market-cards" class="market-grid"></div>
+            </div>
+        </dialog>
+
+        <dialog id="event-modal" class="modal">
+            <!-- Event UI -->
+        </dialog>
+
+        <!-- Dice Animation -->
+        <div class="dice-backdrop" id="dice-backdrop"></div>
+        <div class="dice-container" id="dice-container">
+            <div class="dice-label" id="dice-label">Zar Atılıyor...</div>
+            <div class="dice-box">
+                <div class="dice attacker" id="dice-attacker">?</div>
+                <div class="dice defender" id="dice-defender">?</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module" src="./js/main.js"></script>
+</body>
+
+</html>

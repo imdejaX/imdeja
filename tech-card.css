@@ -1,0 +1,12 @@
+.card.diplomacy-card:hover {
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(79, 70, 229, 0.5);
+}
+
+.card.tech-card {
+    background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+    border-color: #f97316;
+}
+
+.card.tech-card:hover {
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(249, 115, 22, 0.5);
+}

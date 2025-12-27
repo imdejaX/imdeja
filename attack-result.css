@@ -1,0 +1,110 @@
+/* Attack Result Notification */
+.attack-result-notification {
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    z-index: 10001;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.attack-result-notification.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.attack-result-content {
+    border-radius: 10px;
+    padding: 20px 40px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border: 2px solid;
+    animation: bounce-in 0.3s ease-out;
+}
+
+/* Damage variant */
+.attack-result-content.damage {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    border-color: #fbbf24;
+    box-shadow: 0 0 30px rgba(245, 158, 11, 0.6);
+}
+
+/* Destroyed variant */
+.attack-result-content.destroyed {
+    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+    border-color: #fca5a5;
+    box-shadow: 0 0 30px rgba(220, 38, 38, 0.8);
+    animation: explode 0.4s ease-out;
+}
+
+/* Defended variant */
+.attack-result-content.defended {
+    background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+    border-color: #93c5fd;
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
+}
+
+.result-icon {
+    font-size: 3rem;
+    animation: pulse-icon 0.5s ease-in-out 2;
+}
+
+.result-message {
+    font-size: 1.3rem;
+    color: white;
+    font-weight: 600;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.result-message strong {
+    font-size: 1.5rem;
+    color: #fde047;
+}
+
+@keyframes bounce-in {
+    0% {
+        transform: scale(0.3);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes explode {
+    0% {
+        transform: scale(0.5) rotate(-5deg);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scale(1.2) rotate(5deg);
+    }
+
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+}
+
+@keyframes pulse-icon {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+}
