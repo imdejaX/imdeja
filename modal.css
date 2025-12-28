@@ -281,3 +281,318 @@ dialog.modal::backdrop {
     color: #4338ca !important;
     /* Royal purple for diplomacy */
 }
+
+/* Mobile Responsive Styles for Modals */
+
+/* Tablet Portrait - 768px to 1024px */
+@media (max-width: 1024px) {
+    .modal-content {
+        max-width: 85%;
+        padding: 20px;
+    }
+
+    .modal-header h2 {
+        font-size: 1.3rem;
+    }
+
+    .market-grid {
+        gap: 12px;
+    }
+
+    .player-resources-display {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+}
+
+/* Mobile Landscape & Small Tablets - 600px to 768px */
+@media (max-width: 768px) {
+    .modal-content {
+        max-width: 92%;
+        padding: 16px;
+        max-height: 85vh;
+    }
+
+    .market-modal-content {
+        padding: 16px;
+    }
+
+    .modal-header {
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+    }
+
+    .modal-header h2 {
+        font-size: 1.2rem;
+        flex: 1 1 100%;
+    }
+
+    .player-resources-display {
+        gap: 12px;
+        padding: 6px 12px;
+        font-size: 0.8rem;
+        flex: 1 1 auto;
+    }
+
+    .player-resources-display .resource-item {
+        font-size: 0.85rem;
+    }
+
+    .market-refresh-btn {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+        min-width: 110px;
+    }
+
+    .icon-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1.1rem;
+    }
+
+    .market-info p {
+        font-size: 0.85rem;
+    }
+
+    /* Deck counts */
+    #deck-counts {
+        gap: 12px;
+        padding: 8px;
+        font-size: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    /* Market grid - smaller cards */
+    .market-grid {
+        gap: 10px;
+    }
+
+    .market-grid .card {
+        width: 70px;
+        height: 95px;
+        padding: 4px;
+    }
+
+    .market-grid .card-title {
+        font-size: 0.65rem;
+    }
+
+    .market-grid .card-cost {
+        font-size: 0.7rem;
+    }
+
+    .market-grid .card-type {
+        font-size: 0.6rem;
+    }
+}
+
+/* Mobile Portrait - 480px to 600px */
+@media (max-width: 600px) {
+    .modal-content {
+        max-width: 95%;
+        padding: 12px;
+    }
+
+    .market-modal-content {
+        padding: 12px;
+    }
+
+    .modal-header {
+        gap: 6px;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+    }
+
+    .modal-header h2 {
+        font-size: 1.1rem;
+    }
+
+    .player-resources-display {
+        gap: 8px;
+        padding: 5px 10px;
+        font-size: 0.75rem;
+    }
+
+    .player-resources-display .resource-item {
+        font-size: 0.8rem;
+    }
+
+    .market-refresh-btn {
+        padding: 6px 10px;
+        font-size: 0.8rem;
+        min-width: 100px;
+        gap: 6px;
+    }
+
+    .refresh-badge {
+        font-size: 0.75rem;
+        padding: 2px 6px;
+    }
+
+    .icon-btn {
+        width: 34px;
+        height: 34px;
+        font-size: 1rem;
+    }
+
+    .market-info p {
+        font-size: 0.8rem;
+    }
+
+    /* Deck counts - stack on mobile */
+    #deck-counts {
+        gap: 8px;
+        padding: 6px;
+        font-size: 0.7rem;
+    }
+
+    #deck-counts span {
+        flex: 1 1 45%;
+    }
+
+    /* Smaller market cards */
+    .market-grid {
+        gap: 8px;
+    }
+
+    .market-grid .card {
+        width: 65px;
+        height: 90px;
+        padding: 4px;
+    }
+
+    .market-grid .card-title {
+        font-size: 0.6rem;
+        line-height: 1.1;
+    }
+
+    .market-grid .card-cost {
+        font-size: 0.65rem;
+    }
+
+    .market-grid .card-type {
+        font-size: 0.55rem;
+    }
+}
+
+/* Small Mobile - 320px to 480px */
+@media (max-width: 480px) {
+    .modal-content {
+        max-width: 98%;
+        padding: 10px;
+        max-height: 90vh;
+    }
+
+    .market-modal-content {
+        padding: 10px;
+    }
+
+    .modal-header {
+        gap: 6px;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+    }
+
+    .modal-header h2 {
+        font-size: 1rem;
+    }
+
+    .player-resources-display {
+        gap: 6px;
+        padding: 4px 8px;
+        font-size: 0.7rem;
+    }
+
+    .player-resources-display .resource-item {
+        font-size: 0.75rem;
+    }
+
+    .market-refresh-btn {
+        padding: 5px 8px;
+        font-size: 0.75rem;
+        min-width: 90px;
+    }
+
+    .refresh-badge {
+        font-size: 0.7rem;
+        padding: 1px 5px;
+    }
+
+    .icon-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+        border-width: 1px;
+    }
+
+    .market-info p {
+        font-size: 0.75rem;
+        line-height: 1.3;
+    }
+
+    /* Deck counts - full stack */
+    #deck-counts {
+        gap: 6px;
+        padding: 5px;
+        font-size: 0.65rem;
+    }
+
+    #deck-counts span {
+        flex: 1 1 100%;
+        text-align: center;
+    }
+
+    /* Very compact market cards */
+    .market-grid {
+        gap: 6px;
+    }
+
+    .market-grid .card {
+        width: 60px;
+        height: 85px;
+        padding: 3px;
+    }
+
+    .market-grid .card-title {
+        font-size: 0.55rem;
+        line-height: 1;
+    }
+
+    .market-grid .card-cost {
+        font-size: 0.6rem;
+    }
+
+    .market-grid .card-type {
+        font-size: 0.5rem;
+    }
+
+    /* Make sure 4 cards fit on screen */
+    .market-grid {
+        justify-content: space-around;
+    }
+}
+
+/* Touch optimization for modals */
+@media (hover: none) and (pointer: coarse) {
+
+    .icon-btn,
+    .market-refresh-btn,
+    .modal-close {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .market-grid .card:hover {
+        transform: none;
+    }
+
+    .market-grid .card:active {
+        transform: translateY(-3px) scale(1.02);
+    }
+
+    .icon-btn:active {
+        transform: scale(0.95);
+    }
+}

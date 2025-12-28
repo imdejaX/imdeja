@@ -654,52 +654,24 @@ export class Renderer {
             document.body.appendChild(prompt);
 
             // Add event listener for Roll Dice button
-            document.getElementById('roll-dice-btn').addEventListener('click', () => {
-                const result = this.game.rollDiceForAttack();
-                if (result.success && result.showDice) {
-                    // Hide prompt
-                    prompt.style.display = 'none';
+            document.getElementById('roll-dice-btn').addEventListener('click', async () => {
+                window.soundManager.playDiceRoll();
 
-                    // Show dice animation (2 seconds)
-                    this.showDiceRoll(this.game.lastDiceRoll);
+                // Hide prompt
+                prompt.style.display = 'none';
 
-                    // After dice animation (2s), show attack start notification
-                    setTimeout(() => {
-                        const attacker = this.game.players.find(p => p.id === this.game.activePlayerIndex);
-                        const attackData = this.game.lastDiceRoll;
-                        const attackResult = this.game.lastAttackResult;
+                // Show dice animation FIRST (2 seconds)
+                this.showDiceRoll(this.game.lastDiceRoll);
 
-                        // Get attacker and defender info
-                        const attackerPlayer = this.game.players.find(p => p.name === attackData.attackerName);
-                        const defenderPlayer = this.game.players.find(p => p.name === attackData.defenderName);
+                // Wait for dice animation to complete
+                await new Promise(resolve => setTimeout(resolve, 2000));
 
-                        // Stage 1: Attack start notification
-                        this.game.showAttackStartNotification({
-                            attacker: attackData.attackerName,
-                            attackerColor: attackerPlayer.color,
-                            defender: attackData.defenderName,
-                            defenderColor: defenderPlayer.color,
-                            target: attackResult.targetType
-                        });
+                // NOW execute the attack with combat calculator
+                const result = await this.game.rollDiceForAttack();
 
-                        // Stage 2: Attack result notification after 3 more seconds
-                        setTimeout(() => {
-                            this.game.showAttackResultNotification({
-                                attacker: attackData.attackerName,
-                                attackerColor: attackerPlayer.color,
-                                defender: attackData.defenderName,
-                                defenderColor: defenderPlayer.color,
-                                target: attackResult.targetType,
-                                damage: attackResult.damage || 0,
-                                attackRoll: attackData.attacker,
-                                defenseRoll: attackData.defender,
-                                success: attackResult.success,
-                                destroyed: attackResult.destroyed || false
-                            });
-                        }, 3000);
-
-                        this.render();
-                    }, 2000);
+                if (result.success) {
+                    // Render after everything is done
+                    this.render();
                 }
             });
 
@@ -816,54 +788,6 @@ export class Renderer {
         setTimeout(() => {
             notification.classList.remove('show');
         }, 5000);
-    }
-
-    showAttackResult(result) {
-        // Create or get notification element
-        let notification = document.getElementById('attack-result-notification');
-        if (!notification) {
-            notification = document.createElement('div');
-            notification.id = 'attack-result-notification';
-            notification.className = 'attack-result-notification';
-            document.body.appendChild(notification);
-        }
-
-        // Build message based on result
-        let message = '';
-        let icon = '';
-        let className = '';
-
-        if (result.success) {
-            if (result.destroyed) {
-                icon = '💥';
-                message = `<strong>${result.targetType}</strong> yıkıldı!`;
-                className = 'destroyed';
-            } else {
-                icon = '⚔️';
-                message = `<strong>${result.damage}</strong> hasar verildi!`;
-                className = 'damage';
-            }
-        } else {
-            icon = '🛡️';
-            message = `<strong>Savunma başarılı!</strong>`;
-            className = 'defended';
-        }
-
-        // Set content
-        notification.innerHTML = `
-            <div class="attack-result-content ${className}">
-                <div class="result-icon">${icon}</div>
-                <div class="result-message">${message}</div>
-            </div>
-        `;
-
-        // Show notification
-        notification.classList.add('show');
-
-        // Hide after 3 seconds
-        setTimeout(() => {
-            notification.classList.remove('show');
-        }, 3000);
     }
 
     showVassalGridModal(vassalId) {

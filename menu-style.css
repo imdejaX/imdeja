@@ -303,3 +303,307 @@ body::before {
     box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
     transform: scale(1.1);
 }
+
+/* Mobile Responsive Styles for Menu */
+
+/* Tablet Portrait - 768px to 1024px */
+@media (max-width: 1024px) {
+    .menu-container {
+        max-width: 550px;
+        padding: 15px;
+    }
+
+    .menu-card {
+        padding: 35px;
+    }
+
+    .game-title {
+        font-size: 2.2rem;
+    }
+}
+
+/* Mobile Landscape & Small Tablets - 600px to 768px */
+@media (max-width: 768px) {
+    .menu-container {
+        max-width: 90%;
+        padding: 15px;
+    }
+
+    .menu-card {
+        padding: 30px 25px;
+    }
+
+    .game-title {
+        font-size: 2rem;
+        letter-spacing: 1.5px;
+    }
+
+    .subtitle {
+        font-size: 0.85rem;
+        margin-bottom: 30px;
+    }
+
+    .player-selection h2 {
+        font-size: 1.2rem;
+        margin-bottom: 15px;
+    }
+
+    .player-buttons {
+        gap: 12px;
+        margin-bottom: 25px;
+    }
+
+    .player-btn {
+        padding: 18px 8px;
+    }
+
+    .player-icon {
+        font-size: 1.8rem;
+    }
+
+    .player-count {
+        font-size: 0.85rem;
+    }
+
+    .selected-info {
+        margin: 25px 0;
+        padding: 18px;
+    }
+
+    .selected-info p {
+        font-size: 1rem;
+        margin-bottom: 12px;
+    }
+
+    .start-btn {
+        font-size: 1.1rem;
+        padding: 14px 35px;
+    }
+
+    .bot-btn-small {
+        width: 48px;
+        height: 48px;
+        font-size: 0.95rem;
+    }
+}
+
+/* Mobile Portrait - 480px to 600px */
+@media (max-width: 600px) {
+    .menu-container {
+        padding: 10px;
+    }
+
+    .menu-card {
+        padding: 25px 20px;
+        border-radius: 12px;
+    }
+
+    .game-title {
+        font-size: 1.6rem;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+    }
+
+    .crown {
+        font-size: 0.9em;
+    }
+
+    .subtitle {
+        font-size: 0.8rem;
+        margin-bottom: 25px;
+    }
+
+    .player-selection h2 {
+        font-size: 1.1rem;
+        margin-bottom: 12px;
+    }
+
+    .player-buttons {
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .player-btn {
+        padding: 16px 6px;
+    }
+
+    .player-icon {
+        font-size: 1.6rem;
+    }
+
+    .player-count {
+        font-size: 0.8rem;
+    }
+
+    .selected-info {
+        margin: 20px 0;
+        padding: 15px;
+    }
+
+    .selected-info p {
+        font-size: 0.95rem;
+        margin-bottom: 10px;
+    }
+
+    .bot-selection-inline h3 {
+        font-size: 0.9rem !important;
+        margin-bottom: 8px !important;
+    }
+
+    .bot-buttons-inline {
+        gap: 8px;
+    }
+
+    .bot-btn-small {
+        width: 46px;
+        height: 46px;
+        font-size: 0.9rem;
+    }
+
+    .start-btn {
+        font-size: 1rem;
+        padding: 13px 30px;
+    }
+
+    .menu-footer {
+        margin-top: 25px;
+        gap: 8px;
+    }
+
+    .secondary-btn {
+        padding: 9px 18px;
+        font-size: 0.8rem;
+    }
+}
+
+/* Small Mobile - 320px to 480px */
+@media (max-width: 480px) {
+    .menu-container {
+        padding: 8px;
+    }
+
+    .menu-card {
+        padding: 20px 15px;
+    }
+
+    .game-title {
+        font-size: 1.4rem;
+        letter-spacing: 0.5px;
+    }
+
+    .crown {
+        font-size: 0.85em;
+    }
+
+    .subtitle {
+        font-size: 0.75rem;
+        margin-bottom: 20px;
+    }
+
+    .player-selection h2 {
+        font-size: 1rem;
+        margin-bottom: 10px;
+    }
+
+    .player-buttons {
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 18px;
+    }
+
+    .player-btn {
+        padding: 14px 20px;
+        width: 100%;
+    }
+
+    .player-icon {
+        font-size: 1.5rem;
+    }
+
+    .player-count {
+        font-size: 0.85rem;
+    }
+
+    .selected-info {
+        margin: 18px 0;
+        padding: 12px;
+    }
+
+    .selected-info p {
+        font-size: 0.9rem;
+        margin-bottom: 10px;
+    }
+
+    .bot-selection-inline {
+        margin: 15px 0;
+        padding: 12px;
+    }
+
+    .bot-selection-inline h3 {
+        font-size: 0.85rem !important;
+        margin-bottom: 8px !important;
+    }
+
+    .bot-buttons-inline {
+        gap: 6px;
+    }
+
+    .bot-btn-small {
+        width: 44px;
+        height: 44px;
+        font-size: 0.85rem;
+    }
+
+    .start-btn {
+        font-size: 0.95rem;
+        padding: 12px 25px;
+        width: 100%;
+    }
+
+    .menu-footer {
+        margin-top: 20px;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .secondary-btn {
+        padding: 10px 20px;
+        font-size: 0.8rem;
+        width: 100%;
+    }
+}
+
+/* Touch optimization for menu */
+@media (hover: none) and (pointer: coarse) {
+
+    .player-btn,
+    .bot-btn-small,
+    .start-btn,
+    .secondary-btn {
+        min-height: 44px;
+    }
+
+    .player-btn:hover {
+        transform: none;
+    }
+
+    .player-btn:active {
+        transform: scale(0.98);
+    }
+
+    .bot-btn-small:hover {
+        transform: none;
+    }
+
+    .bot-btn-small:active {
+        transform: scale(0.95);
+    }
+
+    .start-btn:hover {
+        transform: none;
+    }
+
+    .start-btn:active {
+        transform: translateY(-1px);
+    }
+}

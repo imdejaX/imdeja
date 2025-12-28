@@ -635,7 +635,7 @@ export class Game {
     }
 
     // Phase 2: Roll Dice and Complete Attack
-    rollDiceForAttack() {
+    async rollDiceForAttack() {
         if (!this.pendingAttack) {
             return { success: false, msg: "Bekleyen saldırı yok!" };
         }
@@ -720,6 +720,78 @@ export class Game {
             soldierTypes.has('Okçu') &&
             soldierTypes.has('Süvari') &&
             hasBarracksForBonus;
+
+        // Prepare combat calculation data for display
+        const attackerBaseCalc = [
+            { text: `⚔️ Askeri Güç (%25): ${maxAttackPower}`, color: '#a8dadc' }
+        ];
+
+        if (militaryTech > 0) {
+            const techBonus = techBoostedAttack - maxAttackPower;
+            attackerBaseCalc.push({
+                text: `🔬 Silah Teknolojisi Lv${militaryTech} (×${militaryMultipliers[militaryTech]}): +${techBonus}`,
+                color: '#4ecdc4'
+            });
+        }
+
+        if (militaryBonus > 0) {
+            attackerBaseCalc.push({
+                text: `✨ Askeri Gösteri Bonusu: +${militaryBonus}`,
+                color: '#fbbf24'
+            });
+        }
+
+        if (hasDiversityBonus) {
+            attackerBaseCalc.push({
+                text: `🎖️ Çeşitlilik Bonusu: +20%`,
+                color: '#10b981'
+            });
+        }
+
+        const defenderBaseCalc = [
+            { text: `🏰 Bina Savunması: ${targetCell.power || 0}`, color: '#a8dadc' }
+        ];
+
+        if (defenseTech > 0) {
+            const techBonus = techBoostedDefense - (targetCell.power || 0);
+            defenderBaseCalc.push({
+                text: `🛡️ Savunma Teknolojisi Lv${defenseTech} (×${defenseMultipliers[defenseTech]}): +${techBonus}`,
+                color: '#4ecdc4'
+            });
+        }
+
+        defenderBaseCalc.push({
+            text: `⚔️ Askeri Bonus (%20): ${defenderMilitaryBonus}`,
+            color: '#a8dadc'
+        });
+
+        const combatSuccess = attackPower > defensePower;
+        const damageDealt = combatSuccess ? (attackPower - defensePower) : 0;
+
+        const combatData = {
+            attackerName: attacker.name,
+            attackerColor: attacker.color,
+            defenderName: defender.name,
+            defenderColor: defender.color,
+            attackerBaseCalc,
+            defenderBaseCalc,
+            attackRoll,
+            defenseRoll,
+            totalAttack: attackPower,
+            totalDefense: defensePower,
+            result: combatSuccess ? {
+                text: `✅ SALDIRI BAŞARILI! (${damageDealt} Hasar)`,
+                color: '#10b981',
+                success: true
+            } : {
+                text: `🛡️ SAVUNMA BAŞARILI!`,
+                color: '#ef4444',
+                success: false
+            }
+        };
+
+        // Show combat calculation modal and WAIT for it to complete
+        await this.showCombatCalculation(combatData);
 
         this.log(`⚔️ ZAR ATILDI! ${attacker.name} -> ${defender.name}`);
         if (hasDiversityBonus) {
@@ -976,6 +1048,16 @@ export class Game {
         }, 3000);
     }
 
+    async showCombatCalculation(combatData) {
+        // Dynamically import combat calculator
+        try {
+            const { combatCalculator } = await import('./combatCalculator.js');
+            await combatCalculator.showCombatCalculation(combatData);
+        } catch (error) {
+            console.error('Failed to load combat calculator:', error);
+        }
+    }
+
     showPropagandaNotification(data) {
         const notification = document.createElement('div');
         notification.className = 'propaganda-notification';
@@ -1181,22 +1263,40 @@ export class Game {
     }
 
     showTurnNotification(player) {
-        // Remove existing notification if any
-        const existing = document.querySelector('.turn-notification');
-        if (existing) existing.remove();
+        // Play turn notification sound
+        if (window.soundManager) {
+            window.soundManager.playTurnStart();
+        }
 
-        const notification = document.createElement('div');
-        notification.className = 'turn-notification';
+        // Create notification element if it doesn't exist
+        let notification = document.getElementById('turn-notification-popup');
+        if (!notification) {
+            notification = document.createElement('div');
+            notification.id = 'turn-notification-popup';
+            notification.className = 'turn-notification';
+            document.body.appendChild(notification);
+        }
+
+        // Set notification content with player color
+        const playerIcon = player.isBot ? '🤖' : '👑';
         notification.innerHTML = `
-            <div style="font-size: 1rem; color: #9ca3af; margin-bottom: 5px;">SIRA</div>
-            <div style="font-size: 1.5rem; font-weight: 700; color: ${player.color};">${player.name.toUpperCase()}</div>
+            <h2 style="color: ${player.color}; text-shadow: 0 0 20px ${player.color};">
+                ${playerIcon} ${player.name}
+            </h2>
+            <p>Sıra Sizde!</p>
         `;
-        document.body.appendChild(notification);
 
+        // Show notification
+        notification.style.display = 'block';
+        notification.classList.remove('fade-out');
+
+        // Hide after 2 seconds
         setTimeout(() => {
             notification.classList.add('fade-out');
-            setTimeout(() => notification.remove(), 500);
-        }, 2500);
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 300);
+        }, 2000);
     }
 
     distributeIncome() {

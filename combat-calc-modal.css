@@ -1,0 +1,60 @@
+/* Combat Calculation Modal */
+.combat-calc-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.combat-calc-modal.show {
+    opacity: 1;
+}
+
+.combat-calc-content {
+    animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-30px) scale(0.95);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .combat-calc-content {
+        max-width: 90% !important;
+        padding: 20px !important;
+        font-size: 0.85rem !important;
+    }
+
+    .combat-header {
+        font-size: 1.1rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .combat-calc-content {
+        padding: 15px !important;
+        font-size: 0.75rem !important;
+    }
+
+    .combat-header {
+        font-size: 1rem !important;
+    }
+}

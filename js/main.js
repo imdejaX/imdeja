@@ -1,6 +1,7 @@
 import { Game } from './core/game.js';
 import { Renderer } from './core/renderer.js';
 import { BotAI } from './core/bot.js';
+import { soundManager } from './core/soundManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Game initialization
@@ -8,9 +9,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderer = new Renderer(game);
     const botAI = new BotAI(game);
 
-    // Make bot and renderer globally accessible for game callbacks
+    // Make bot, renderer, and sound manager globally accessible
     window.botAI = botAI;
     window.renderer = renderer;
+    window.soundManager = soundManager;
 
     try {
         // Initial render
@@ -21,12 +23,34 @@ document.addEventListener('DOMContentLoaded', () => {
         alert("Oyun başlatılırken hata oluştu: " + e.message);
     }
 
+    // Resume audio context on first user interaction
+    document.addEventListener('click', () => soundManager.resumeContext(), { once: true });
+
     // UI Event Listeners
+
+    // Sound Toggle Button
+    const soundToggleBtn = document.getElementById('sound-toggle-btn');
+    if (soundToggleBtn) {
+        // Set initial state
+        soundToggleBtn.textContent = soundManager.isEnabled() ? '🔊' : '🔇';
+
+        soundToggleBtn.addEventListener('click', () => {
+            const enabled = soundManager.toggle();
+            soundToggleBtn.textContent = enabled ? '🔊' : '🔇';
+            soundToggleBtn.title = enabled ? 'Sesi Kapat' : 'Sesi Aç';
+
+            // Play a confirmation sound if turning on
+            if (enabled) {
+                soundManager.playClick();
+            }
+        });
+    }
 
     // Home Button
     const homeBtn = document.getElementById('home-btn');
     if (homeBtn) {
         homeBtn.addEventListener('click', () => {
+            soundManager.playClick();
             if (confirm('Ana menüye dönmek istediğinize emin misiniz? (Oyun kaydedilmeyecek)')) {
                 window.location.href = 'menu.html';
             }
@@ -71,6 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (marketBtn && marketModal) {
         marketBtn.addEventListener('click', () => {
+            soundManager.playModalOpen();
+
             // Update player resources display
             const activePlayer = game.getActivePlayer();
             const goldDisplay = document.getElementById('market-player-gold');
@@ -93,6 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeMarketBtn = document.getElementById('close-market-btn');
     if (closeMarketBtn) {
         closeMarketBtn.addEventListener('click', () => {
+            soundManager.playModalClose();
             marketModal.close();
         });
     }
@@ -103,8 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshMarketBtn.addEventListener('click', () => {
             const result = game.refreshMarket();
             if (result.success === false) {
+                soundManager.playError();
                 alert(result.msg);
             } else {
+                soundManager.playMarketRefresh();
+
                 // Update UI after successful refresh
                 updateRefreshButtonUI();
 
@@ -118,6 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (marketModal) {
         marketModal.addEventListener('click', (e) => {
             if (e.target === marketModal) {
+                soundManager.playModalClose();
                 marketModal.close();
             }
         });
@@ -127,6 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const endTurnBtn = document.getElementById('end-turn-btn');
     if (endTurnBtn) {
         endTurnBtn.addEventListener('click', () => {
+            soundManager.playTurnEnd();
             game.endTurn();
             renderer.render();
         });
@@ -135,12 +167,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Keyboard Shortcuts
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            if (marketModal && marketModal.open) marketModal.close();
+            if (marketModal && marketModal.open) {
+                soundManager.playModalClose();
+                marketModal.close();
+            }
             // Close other modals if any
             game.clearActionMode();
             renderer.render();
         }
     });
 
-    console.log("Game initialized with new UI.");
+    console.log("Game initialized with sound effects.");
 });
