@@ -558,11 +558,39 @@ export class Game {
 
         // Rule: Vassal cannot attack Master
         if (attacker.isVassal && attacker.masterId === defender.id) {
-            return { success: false, msg: "Efendine saldıramazsın! (İsyan henüz eklenmedi)" };
+            return { success: false, msg: "Efendine saldıramazsın!" };
         }
         // Rule: Master cannot attack Vassal (Protection)
         if (defender.isVassal && defender.masterId === attacker.id) {
             return { success: false, msg: "Vasalını korumalısın, saldıramazsın!" };
+        }
+
+        // NEW RULE: Attacking a vassal = Attacking their master
+        // This redirects the attack to the master's kingdom for strategic depth
+        if (defender.isVassal && defender.masterId !== attacker.id) {
+            const master = this.players.find(p => p.id === defender.masterId);
+            if (master) {
+                // Find valid targets on master's grid (buildings only, not units)
+                const validTargets = master.grid
+                    .map((cell, idx) => ({ cell, idx }))
+                    .filter(item => item.cell && !item.cell.isUnit);
+
+                if (validTargets.length === 0) {
+                    return { success: false, msg: `${defender.name} efendisi ${master.name} tarafından korunuyor, ama hedef bulunamadı!` };
+                }
+
+                // Prioritize non-Meclis targets to avoid instant game over
+                const nonMeclis = validTargets.filter(t => t.cell.type !== 'Meclis');
+                const targetList = nonMeclis.length > 0 ? nonMeclis : validTargets;
+
+                // Select a random building from available targets
+                const selectedTarget = targetList[Math.floor(Math.random() * targetList.length)];
+
+                this.log(`⛓️ ${defender.name} bir vassal! Saldırı efendisi ${master.name}'e yönlendirildi!`);
+
+                // Recursively call with master as new target
+                return this.initiateAttack(master.id, selectedTarget.idx);
+            }
         }
 
         const targetCell = defender.grid[targetSlotIndex];
@@ -1053,6 +1081,9 @@ export class Game {
         // Reset Actions and Refreshes
         const nextPlayer = this.getActivePlayer();
 
+        // DEBUG: Log turn sequence for debugging turn skip issues
+        console.log(`🎯 Turn ${this.turn}, Player Index ${this.activePlayerIndex}: ${nextPlayer.name} (Bot: ${nextPlayer.isBot}, Vassal: ${nextPlayer.isVassal})`);
+
         // VASSAL SYSTEM: If next player is vassal, they get no actions
         if (nextPlayer.isVassal) {
             nextPlayer.actionsRemaining = 0; // Vassals cannot act
@@ -1405,7 +1436,7 @@ export class Game {
         if (!card || card.type !== 'Diplomasi') return { success: false, msg: "Geçersiz kart!" };
 
         // Validate target BEFORE consuming action (for cards that need target)
-        if (card.effect && card.effect !== 'gold_boost' && card.effect !== 'military_boost') {
+        if (card.effect && card.effect !== 'gold_boost' && card.effect !== 'military_boost' && card.effect !== 'white_flag') {
             if (!targetPlayerId) return { success: false, msg: "Bu kart için bir hedef seçmelisin!" };
             const target = this.players.find(p => p.id === targetPlayerId);
             if (!target) return { success: false, msg: "Hedef bulunamadı!" };

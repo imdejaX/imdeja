@@ -591,7 +591,7 @@ export class Renderer {
             el.addEventListener('click', () => {
                 if (card.type === 'Diplomasi') {
                     // Check if card needs a target
-                    const needsTarget = card.effect && card.effect !== 'gold_boost' && card.effect !== 'military_boost';
+                    const needsTarget = card.effect && card.effect !== 'gold_boost' && card.effect !== 'military_boost' && card.effect !== 'white_flag';
 
                     if (needsTarget) {
                         // Auto-target in 1v1 games

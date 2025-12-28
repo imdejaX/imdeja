@@ -108,7 +108,8 @@ export class BotAI {
                 this.game.selectedCardIndex = index;
 
                 // Determine if card needs target
-                const needsTarget = ['steal_card', 'steal_unit', 'break_alliance', 'assassination'].includes(card.effect);
+                // Cards that DON'T need target: gold_boost, military_boost, white_flag
+                const needsTarget = card.effect && !['gold_boost', 'military_boost', 'white_flag'].includes(card.effect);
 
                 if (needsTarget) {
                     // Find best target
