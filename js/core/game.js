@@ -38,6 +38,10 @@ export class Game {
         this.pendingAttack = null; // Store attack data for dice roll
     }
 
+    initializeGame() {
+        this.initializeBoard();
+    }
+
     createPlayer(id, name, color) {
         return {
             id,
@@ -53,14 +57,15 @@ export class Game {
             technologies: {
                 food: 0,      // Level 0-4
                 military: 0,  // Level 0-4
-                defense: 0    // Level 0-4
+                defense: 0,   // Level 0-4
+                commerce: 0   // Level 0-4 (Pazar boost)
             },
             militaryBoost: 0, // Temporary boost from Askeri Gösteri
             whiteFlagTurns: 0, // White flag protection (0 = none, 1-2 = turns remaining)
+            marketRefreshes: 0, // Market refreshes used this turn (max 2)
             grid: Array(9).fill(null),
             hand: [],
             actionsRemaining: 2,
-            marketRefreshesRemaining: 2, // Market refresh limit per turn
             attackedBy: [] // Track who attacked this player this turn
         };
     }
@@ -81,7 +86,6 @@ export class Game {
 
         const diplomacyCards = [
             { name: 'Casusluk', cost: 3, type: 'Diplomasi', dp: 2, effect: 'steal_card' },
-            { name: 'Ticaret Yolu', cost: 2, type: 'Diplomasi', dp: 1, effect: 'gold_boost' },
             { name: 'Propaganda', cost: 4, type: 'Diplomasi', dp: 3, effect: 'steal_unit' },
             { name: 'Suikast', cost: 15, type: 'Diplomasi', dp: 8, effect: 'assassination' },
             { name: 'Askeri Gösteri', cost: 3, type: 'Diplomasi', dp: 2, effect: 'military_boost' },
@@ -92,16 +96,25 @@ export class Game {
 
         const technologyCards = [
             // Military Technology (Attack power boost) - BALANCED
-            { name: 'Silah I', cost: 8, popCost: 2, type: 'Teknoloji', techType: 'military', level: 1, multiplier: 1.2 },
-            { name: 'Silah II', cost: 15, popCost: 3, type: 'Teknoloji', techType: 'military', level: 2, multiplier: 1.5 },
-            { name: 'Silah III', cost: 25, popCost: 4, type: 'Teknoloji', techType: 'military', level: 3, multiplier: 2 },
-            { name: 'Silah IV', cost: 40, popCost: 5, type: 'Teknoloji', techType: 'military', level: 4, multiplier: 2.5 },
+            { name: 'Silah I', cost: 5, popCost: 2, type: 'Teknoloji', techType: 'military', level: 1, multiplier: 1.2 },
+            { name: 'Silah II', cost: 10, popCost: 3, type: 'Teknoloji', techType: 'military', level: 2, multiplier: 1.5 },
+            { name: 'Silah III', cost: 15, popCost: 4, type: 'Teknoloji', techType: 'military', level: 3, multiplier: 2 },
+            { name: 'Silah IV', cost: 25, popCost: 5, type: 'Teknoloji', techType: 'military', level: 4, multiplier: 2.5 },
 
             // Defense Technology (Building HP boost) - BALANCED
-            { name: 'Savunma I', cost: 8, popCost: 2, type: 'Teknoloji', techType: 'defense', level: 1, multiplier: 1.2 },
-            { name: 'Savunma II', cost: 15, popCost: 3, type: 'Teknoloji', techType: 'defense', level: 2, multiplier: 1.5 },
-            { name: 'Savunma III', cost: 25, popCost: 4, type: 'Teknoloji', techType: 'defense', level: 3, multiplier: 2 },
-            { name: 'Savunma IV', cost: 40, popCost: 5, type: 'Teknoloji', techType: 'defense', level: 4, multiplier: 2.5 }
+            { name: 'Savunma I', cost: 5, popCost: 2, type: 'Teknoloji', techType: 'defense', level: 1, multiplier: 1.2 },
+            { name: 'Savunma II', cost: 10, popCost: 3, type: 'Teknoloji', techType: 'defense', level: 2, multiplier: 1.5 },
+            { name: 'Savunma III', cost: 15, popCost: 4, type: 'Teknoloji', techType: 'defense', level: 3, multiplier: 2 },
+            { name: 'Savunma IV', cost: 25, popCost: 5, type: 'Teknoloji', techType: 'defense', level: 4, multiplier: 2.5 },
+
+            // Commerce Technology (Pazar boost) - NEW
+            { name: 'Ticaret I', cost: 5, popCost: 2, type: 'Teknoloji', techType: 'commerce', level: 1, multiplier: 1.5 },
+            { name: 'Ticaret II', cost: 10, popCost: 3, type: 'Teknoloji', techType: 'commerce', level: 2, multiplier: 2 },
+            { name: 'Ticaret III', cost: 15, popCost: 4, type: 'Teknoloji', techType: 'commerce', level: 3, multiplier: 2.5 },
+            { name: 'Ticaret IV', cost: 25, popCost: 5, type: 'Teknoloji', techType: 'commerce', level: 4, multiplier: 3 },
+
+            // Joker Card - SPECIAL: Player chooses which tech to upgrade
+            { name: '🃏 Joker', cost: 10, popCost: 2, type: 'Teknoloji', techType: 'joker', level: 0, isJoker: true }
         ];
 
         let deck = [];
@@ -124,10 +137,18 @@ export class Game {
             deck.push({ id: `card-${deck.length}`, ...template });
         }
 
-        // Add 10 technology cards (increased from 6 for better availability)
-        for (let i = 0; i < 10; i++) {
-            const template = technologyCards[Math.floor(Math.random() * technologyCards.length)];
+        // Add 8 regular technology cards
+        const regularTechCards = technologyCards.filter(c => !c.isJoker);
+        for (let i = 0; i < 8; i++) {
+            const template = regularTechCards[Math.floor(Math.random() * regularTechCards.length)];
             deck.push({ id: `card-${deck.length}`, ...template });
+        }
+
+        // Add 2 Joker cards (rare)
+        const jokerCard = technologyCards.find(c => c.isJoker);
+        if (jokerCard) {
+            deck.push({ id: `card-${deck.length}`, ...jokerCard });
+            deck.push({ id: `card-${deck.length}`, ...jokerCard });
         }
 
         // Shuffle deck
@@ -140,42 +161,75 @@ export class Game {
     }
 
     refillMarket() {
-        const maxAttempts = 50; // Safety limit to prevent infinite loops
+        // Market now shows 4 cards, one from each type
+        if (this.openMarket.length >= 4) return;
+
+        const requiredTypes = ['Bina', 'Asker', 'Diplomasi', 'Teknoloji'];
+        const player = this.getActivePlayer();
+
+        // First, ensure we have one card from each type
+        for (const type of requiredTypes) {
+            // Skip if we already have this type
+            if (this.openMarket.some(c => c.type === type)) continue;
+
+            // Find and add a card of this type
+            let cardIndex = -1;
+
+            if (type === 'Teknoloji') {
+                // For tech cards, apply player-specific filters
+                cardIndex = this.market.findIndex(c => {
+                    if (c.type !== 'Teknoloji') return false;
+                    const currentLevel = player.technologies[c.techType];
+                    if (c.level !== currentLevel + 1) return false;
+                    const hasInHand = player.hand.some(h =>
+                        h.type === 'Teknoloji' &&
+                        h.techType === c.techType &&
+                        h.level === c.level
+                    );
+                    return !hasInHand;
+                });
+            } else {
+                // For other types, just find first match
+                cardIndex = this.market.findIndex(c => c.type === type);
+            }
+
+            if (cardIndex !== -1) {
+                const card = this.market.splice(cardIndex, 1)[0];
+                this.openMarket.push(card);
+            }
+        }
+
+        // Fill any remaining empty slots with any available cards
+        const maxAttempts = 50;
         let attempts = 0;
 
-        while (this.openMarket.length < 3 && attempts < maxAttempts) {
+        while (this.openMarket.length < 4 && attempts < maxAttempts) {
             attempts++;
             let card = null;
 
-            // Priority 1: Mercenary Pool
+            // 1. Mercenary Pool
             if (this.mercenaryPool.length > 0) {
                 card = this.mercenaryPool.pop();
             }
-            // Priority 2: Main Deck
+            // 2. Main Deck
             else if (this.market.length > 0) {
                 card = this.market.pop();
 
-                // Filter technology cards by active player's level
+                // Tech Filters
                 if (card.type === 'Teknoloji') {
-                    const player = this.getActivePlayer();
                     const currentLevel = player.technologies[card.techType];
 
-                    // Only show if card level = current level + 1
                     if (card.level !== currentLevel + 1) {
-                        // Put card back at bottom of deck and try next
                         this.market.unshift(card);
                         continue;
                     }
 
-                    // Check if player already has this card in hand
                     const hasInHand = player.hand.some(c =>
                         c.type === 'Teknoloji' &&
                         c.techType === card.techType &&
                         c.level === card.level
                     );
-
                     if (hasInHand) {
-                        // Put card back at bottom of deck and try next
                         this.market.unshift(card);
                         continue;
                     }
@@ -185,14 +239,89 @@ export class Game {
             if (card) {
                 this.openMarket.push(card);
             } else {
-                break; // No cards left anywhere
+                break;
             }
         }
 
-        // If we hit the attempt limit, log a warning
-        if (attempts >= maxAttempts && this.openMarket.length < 3) {
-            console.warn('Market refill hit attempt limit. Deck may be exhausted or filtered.');
+        // Fallback
+        if (attempts >= maxAttempts && this.openMarket.length < 4 && this.market.length > 0) {
+            console.warn('Market refill strict mode failed, drawing random...');
+            while (this.openMarket.length < 4 && this.market.length > 0) {
+                this.openMarket.push(this.market.pop());
+            }
         }
+    }
+
+    refillMarketDeprecated() {
+        this.openMarket = []; // Clear current market
+
+        // Slot 1: Always a diplomacy card (reserved)
+        const diplomacyCards = this.market.filter(c => c.type === 'Diplomasi');
+        if (diplomacyCards.length > 0) {
+            const randomDiplomacy = diplomacyCards[Math.floor(Math.random() * diplomacyCards.length)];
+            this.openMarket.push({ ...randomDiplomacy }); // Copy card, don't remove from deck
+        }
+
+        // Slots 2-3: Random cards from entire deck
+        const availableCards = this.market.filter(c => {
+            // For technology cards, filter by player's level
+            if (c.type === 'Teknoloji') {
+                const player = this.getActivePlayer();
+                const currentLevel = player.technologies[c.techType];
+
+                // Only show if card level = current level + 1
+                if (c.level !== currentLevel + 1) return false;
+
+                // Don't show if already in hand
+                const hasInHand = player.hand.some(h =>
+                    h.type === 'Teknoloji' &&
+                    h.techType === c.techType &&
+                    h.level === c.level
+                );
+                if (hasInHand) return false;
+            }
+            return true;
+        });
+
+        // Add 2 more random cards
+        const shuffled = [...availableCards].sort(() => Math.random() - 0.5);
+        for (let i = 0; i < 2 && i < shuffled.length; i++) {
+            this.openMarket.push({ ...shuffled[i] }); // Copy card
+        }
+
+        // If we don't have enough cards, add from mercenary pool
+        while (this.openMarket.length < 3 && this.mercenaryPool.length > 0) {
+            const merc = this.mercenaryPool[Math.floor(Math.random() * this.mercenaryPool.length)];
+            this.openMarket.push({ ...merc });
+        }
+    }
+
+    refreshMarket() {
+        const activePlayer = this.getActivePlayer();
+
+        // Safe initialize
+        if (typeof activePlayer.marketRefreshes !== 'number') {
+            activePlayer.marketRefreshes = 0;
+        }
+
+        // Check refresh limit (2 per turn)
+        if (activePlayer.marketRefreshes >= 2) {
+            return { success: false, msg: 'Bu turda daha fazla yenileme yapamazsınız! (Maksimum 2)' };
+        }
+
+        // Increment refresh counter
+        activePlayer.marketRefreshes++;
+
+        // Return current cards to bottom of deck (recycle)
+        if (this.openMarket.length > 0) {
+            this.market.push(...this.openMarket);
+            this.openMarket = [];
+        }
+
+        // Refill market with new random cards
+        this.refillMarket();
+
+        return { success: true };
     }
 
     initializeBoard() {
@@ -218,18 +347,25 @@ export class Game {
         return this.players[this.activePlayerIndex];
     }
 
-    checkAutoEndTurn() {
-        const player = this.getActivePlayer();
-        if (player.actionsRemaining <= 0) {
-            // Small delay for visual feedback
-            setTimeout(() => {
-                this.endTurn();
-                if (window.renderer) {
-                    window.renderer.render();
-                }
-            }, 500);
-        }
+    getDeckCardCounts() {
+        const counts = {
+            'Bina': 0,
+            'Asker': 0,
+            'Diplomasi': 0,
+            'Teknoloji': 0
+        };
+
+        this.market.forEach(card => {
+            if (counts[card.type] !== undefined) {
+                counts[card.type]++;
+            }
+        });
+
+        return counts;
     }
+
+    // checkAutoEndTurn() is defined later in the file (line ~762)
+    // Removed duplicate function definition here
 
     log(msg) {
         // Add turn number to each log entry
@@ -313,26 +449,6 @@ export class Game {
 
         this.log(`${player.name}, ${card.name} aldı.`);
         this.checkAutoEndTurn();
-        return { success: true };
-    }
-
-    refreshMarket() {
-        const player = this.getActivePlayer();
-
-        if (player.marketRefreshesRemaining < 1) {
-            return { success: false, msg: "Yenileme hakkın kalmadı!" };
-        }
-
-        // Clear current market
-        this.openMarket = [];
-
-        // Refill from pool/deck
-        this.refillMarket();
-
-        // Decrease refresh count
-        player.marketRefreshesRemaining -= 1;
-
-        this.log(`${player.name} pazarı yeniledi. Kalan: ${player.marketRefreshesRemaining}`);
         return { success: true };
     }
 
@@ -433,10 +549,12 @@ export class Game {
             return { success: false, msg: `🏳️ İlk 3 tur barış dönemi! Saldırı yapılamaz. (Tur: ${this.turn}/3)` };
         }
 
-        // WHITE FLAG: Check if defender has white flag protection
-        if (defender.whiteFlagTurns > 0) {
-            return { success: false, msg: `🏳️ ${defender.name} beyaz bayrak koruması altında! (${defender.whiteFlagTurns} tur kaldı)` };
+        // WHITE FLAG: Global no-war period - if ANY player has white flag, NO attacks allowed
+        const whiteFlagPlayer = this.players.find(p => p.whiteFlagTurns > 0);
+        if (whiteFlagPlayer) {
+            return { success: false, msg: `🏳️ ${whiteFlagPlayer.name} beyaz bayrak çekti! Kimse saldırı yapamaz. (${whiteFlagPlayer.whiteFlagTurns} tur kaldı)` };
         }
+
 
         // Rule: Vassal cannot attack Master
         if (attacker.isVassal && attacker.masterId === defender.id) {
@@ -450,18 +568,16 @@ export class Game {
         const targetCell = defender.grid[targetSlotIndex];
         if (!targetCell) return { success: false, msg: "Boş alana saldırılmaz." };
 
-        // Wall Shield System: All attacks redirected to wall first
+        // Wall Shield System: All attacks automatically redirected to wall first
         const wall = defender.grid.find(c => c && c.type === 'Duvar');
         if (wall && targetCell.type !== 'Duvar') {
-            // Find wall index
+            // Auto-redirect to wall
             const wallIndex = defender.grid.findIndex(c => c && c.type === 'Duvar');
-            return {
-                success: false,
-                msg: `🛡️ Duvar tüm saldırıları karşılıyor! Önce Duvar'ı yıkmalısın!`,
-                redirectToWall: true,
-                wallIndex: wallIndex
-            };
+            this.log(`🛡️ Duvar tüm saldırıları karşılıyor! Saldırı otomatik olarak Duvar'a yönlendirildi.`);
+            // Recursively call with wall as target
+            return this.initiateAttack(targetPlayerId, wallIndex);
         }
+
 
         // Rule: Cannot attack Meclis if defender has defensive structures
         if (targetCell.type === 'Meclis') {
@@ -506,15 +622,20 @@ export class Game {
 
         // Track attack for notification
         if (!defender.attackedBy) defender.attackedBy = []; // Safety check
-        // Store attack info with both attacker and defender names
-        const attackInfo = `${attacker.name} → ${defender.name}`;
-        if (!defender.attackedBy.includes(attackInfo)) {
+        // Store attack info with both attacker and defender names AND colors
+        const attackInfo = {
+            text: `${attacker.name} → ${defender.name}`,
+            attackerColor: attacker.color,
+            defenderColor: defender.color
+        };
+        // Check if this attack is already tracked (compare by text)
+        if (!defender.attackedBy.some(a => typeof a === 'object' ? a.text === attackInfo.text : a === attackInfo.text)) {
             defender.attackedBy.push(attackInfo);
         }
 
-        // Combat Power Calculation with 60% limit
+        // Combat Power Calculation - BALANCED
         const totalMilitaryPower = attackerMilitary;
-        const maxAttackPower = Math.ceil(totalMilitaryPower * 0.6); // 60% of total military
+        const maxAttackPower = Math.ceil(totalMilitaryPower * 0.25); // 25% of total military
 
         const attackRoll = Math.floor(Math.random() * 6) + 1;
         const defenseRoll = Math.floor(Math.random() * 6) + 1;
@@ -536,8 +657,22 @@ export class Game {
 
         const targetCell = defender.grid[targetSlotIndex];
 
-        const attackPower = Math.min(maxAttackPower, totalMilitaryPower) + attackRoll + militaryBonus;
-        const defensePower = (targetCell.power || 0) + defenseRoll;
+        // Calculate defender's military power
+        const defenderMilitary = this.calculateMilitary(defender);
+        const defenderMilitaryBonus = Math.ceil(defenderMilitary * 0.20); // 20% of defender's military
+
+        // Apply Military Technology to attack power
+        const militaryTech = attacker.technologies.military;
+        const militaryMultipliers = [1, 1.2, 1.5, 2, 2.5]; // Level 0-4
+        const techBoostedAttack = Math.floor(maxAttackPower * militaryMultipliers[militaryTech]);
+
+        // Apply Defense Technology to building defense
+        const defenseTech = defender.technologies.defense;
+        const defenseMultipliers = [1, 1.2, 1.5, 2, 2.5]; // Level 0-4
+        const techBoostedDefense = Math.floor((targetCell.power || 0) * defenseMultipliers[defenseTech]);
+
+        const attackPower = techBoostedAttack + attackRoll + militaryBonus;
+        const defensePower = techBoostedDefense + defenderMilitaryBonus + defenseRoll;
 
 
         // Check for diversity bonus
@@ -562,8 +697,14 @@ export class Game {
         if (hasDiversityBonus) {
             this.log(`🎖️ Çeşitlilik Bonusu: +20% (Piyade, Okçu, Süvari, Kışla)`);
         }
-        this.log(`Saldırı: ${attackPower} (Max: ${maxAttackPower}, Zar: ${attackRoll})`);
-        this.log(`Savunma: ${defensePower} (Bina: ${targetCell.power || 0}, Zar: ${defenseRoll})`);
+        if (militaryTech > 0) {
+            this.log(`🔬 Silah Teknolojisi Lv${militaryTech}: ×${militaryMultipliers[militaryTech]}`);
+        }
+        if (defenseTech > 0) {
+            this.log(`🛡️ Savunma Teknolojisi Lv${defenseTech}: ×${defenseMultipliers[defenseTech]}`);
+        }
+        this.log(`Saldırı: ${attackPower} (Askeri %25: ${maxAttackPower}, Tek Bonus: ${techBoostedAttack - maxAttackPower}, Zar: ${attackRoll})`);
+        this.log(`Savunma: ${defensePower} (Bina: ${targetCell.power || 0}, Tek Bonus: ${techBoostedDefense - (targetCell.power || 0)}, Askeri %20: ${defenderMilitaryBonus}, Zar: ${defenseRoll})`);
 
         if (attackPower > defensePower) {
             const damage = attackPower - defensePower;
@@ -724,8 +865,116 @@ export class Game {
         this.pendingAttack = null;
         this.clearActionMode(); // Clear mode after action
 
+        // Notifications will be shown by renderer after dice animation (2s)
+        // Stage 1: Attack start notification (after dice)
+        // Stage 2: Attack result notification (after 3s more)
+
         this.checkAutoEndTurn();
         return { success: true, showDice: true };
+    }
+
+    showAttackResultNotification(attackData) {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = 'attack-result-notification';
+
+        // Build gradient background
+        const gradient = `linear-gradient(90deg, ${attackData.attackerColor} 0%, ${attackData.attackerColor} 20%, 
+                         color-mix(in srgb, ${attackData.attackerColor} 50%, ${attackData.defenderColor} 50%) 50%, 
+                         ${attackData.defenderColor} 80%, ${attackData.defenderColor} 100%)`;
+
+        // Build notification content
+        const successIcon = attackData.success ? '💥' : '🛡️';
+        const resultText = attackData.success ? 'BAŞARILI!' : 'BAŞARISIZ!';
+        const destroyedText = attackData.destroyed ? '<div>💀 Yıkıldı!</div>' : '';
+
+        notification.innerHTML = `
+            <div class="attack-result-content" style="background: ${gradient}">
+                <div class="attack-result-header">
+                    ⚔️ ${attackData.attacker} → ${attackData.defender}
+                </div>
+                <div class="attack-result-details">
+                    <div>🎯 Hedef: ${attackData.target}</div>
+                    <div>${successIcon} ${resultText} - ${attackData.damage} Hasar</div>
+                    <div>🎲 Zar: ${attackData.attackRoll} vs ${attackData.defenseRoll}</div>
+                    ${destroyedText}
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(notification);
+
+        // Animate in
+        setTimeout(() => notification.classList.add('show'), 10);
+
+        // Auto-dismiss after 3 seconds
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+
+    showAttackStartNotification(attackData) {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = 'attack-start-notification';
+
+        // Build gradient background
+        const gradient = `linear-gradient(90deg, ${attackData.attackerColor} 0%, ${attackData.attackerColor} 20%, 
+                         color-mix(in srgb, ${attackData.attackerColor} 50%, ${attackData.defenderColor} 50%) 50%, 
+                         ${attackData.defenderColor} 80%, ${attackData.defenderColor} 100%)`;
+
+        notification.innerHTML = `
+            <div class="attack-start-content" style="background: ${gradient}">
+                <div class="attack-start-header">
+                    ⚔️ SALDIRI BAŞLADI!
+                </div>
+                <div class="attack-start-details">
+                    <div>${attackData.attacker} → ${attackData.defender}</div>
+                    <div>🎯 Hedef: ${attackData.target}</div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(notification);
+
+        // Animate in
+        setTimeout(() => notification.classList.add('show'), 10);
+
+        // Auto-dismiss after 3 seconds
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+
+    showPropagandaNotification(data) {
+        const notification = document.createElement('div');
+        notification.className = 'propaganda-notification';
+
+        const gradient = `linear-gradient(90deg, ${data.attackerColor} 0%, ${data.attackerColor} 20%, 
+                         color-mix(in srgb, ${data.attackerColor} 50%, ${data.defenderColor} 50%) 50%, 
+                         ${data.defenderColor} 80%, ${data.defenderColor} 100%)`;
+
+        notification.innerHTML = `
+            <div class="propaganda-content" style="background: ${gradient}">
+                <div class="propaganda-header">
+                    📢 PROPAGANDA BAŞARILI!
+                </div>
+                <div class="propaganda-details">
+                    <div>${data.attacker} propaganda ile</div>
+                    <div>${data.defender}'den ${data.unitName} aldı!</div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(notification);
+        setTimeout(() => notification.classList.add('show'), 10);
+
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
     }
 
     makeVassal(vassal, master) {
@@ -761,18 +1010,30 @@ export class Game {
 
     checkAutoEndTurn() {
         const player = this.getActivePlayer();
-        // Auto end turn if no actions remaining
+        // Auto-end turn for ALL players when actions reach 0
         if (player.actionsRemaining <= 0) {
-            setTimeout(() => {
+            // Clear any existing timer first
+            if (this.autoEndTimer) {
+                clearTimeout(this.autoEndTimer);
+            }
+            // Set new timer
+            this.autoEndTimer = setTimeout(() => {
+                this.autoEndTimer = null;
                 this.endTurn();
                 window.renderer.render();
-            }, 3500); // Wait for attack result notification to show (3 seconds) + buffer
+            }, 6000); // Wait for dice animation (2s) + attack result notification (3s) + buffer
         }
     }
 
     endTurn() {
         if (this.phase === 'SONUÇ') return; // Game Over
         if (this.botTurnInProgress) return; // Prevent bot turn loops
+
+        // CRITICAL: Clear any pending auto-end timer
+        if (this.autoEndTimer) {
+            clearTimeout(this.autoEndTimer);
+            this.autoEndTimer = null;
+        }
 
         // Close market modal if open
         const marketModal = document.getElementById('market-modal');
@@ -795,7 +1056,7 @@ export class Game {
         // VASSAL SYSTEM: If next player is vassal, they get no actions
         if (nextPlayer.isVassal) {
             nextPlayer.actionsRemaining = 0; // Vassals cannot act
-            nextPlayer.marketRefreshesRemaining = 0; // Vassals cannot buy cards
+            // Vassals cannot buy cards (no refresh limit property needed)
 
             const master = this.players.find(p => p.id === nextPlayer.masterId);
             if (master && nextPlayer.gold > 0) {
@@ -807,10 +1068,17 @@ export class Game {
             } else {
                 this.log(`⛓️ ${nextPlayer.name} (Vassal): Sıra pas geçildi.`);
             }
+
+            // CRITICAL FIX: Automatically end vassal's turn to continue to next player
+            setTimeout(() => {
+                this.endTurn();
+                window.renderer.render();
+            }, 1500); // Short delay to show vassal turn notification
+            return; // Exit early to prevent bot check
         } else {
             // Independent players get normal actions
             nextPlayer.actionsRemaining = 2;
-            nextPlayer.marketRefreshesRemaining = 2;
+            // No refresh limit to reset
         }
 
         // White flag countdown
@@ -821,13 +1089,7 @@ export class Game {
             }
         }
 
-        // Show attack notification if player was attacked
-        if (!nextPlayer.attackedBy) nextPlayer.attackedBy = []; // Safety check
-        if (nextPlayer.attackedBy && nextPlayer.attackedBy.length > 0) {
-            const attackers = nextPlayer.attackedBy.join(', ');
-            window.renderer.showAttackNotification(attackers);
-            nextPlayer.attackedBy = []; // Clear after showing
-        }
+        // Attack notifications now show immediately after each attack (removed turn-end batch system)
 
         this.log(`${nextPlayer.name} sırası.`);
         this.showGameTip();
@@ -863,16 +1125,19 @@ export class Game {
                     // Clear safety timeout
                     clearTimeout(safetyTimeout);
 
-                    // Re-enable button
-                    if (endTurnBtn) endTurnBtn.disabled = false;
+                    // CRITICAL: Reset bot flag BEFORE calling endTurn
+                    // This allows consecutive bot turns to work properly
                     this.botTurnInProgress = false;
 
-                    // End bot turn - this will trigger next player's turn
-                    console.log('Bot turn complete, calling endTurn');
+                    // Re-enable button
+                    if (endTurnBtn) endTurnBtn.disabled = false;
+
+                    // End bot turn - this will advance to next player and trigger bot logic if needed
                     this.endTurn();
 
-                    // Render again to show new active player
+                    // Render to show new active player
                     window.renderer.render();
+
                 } catch (error) {
                     console.error('Bot turn error:', error);
                     clearTimeout(safetyTimeout);
@@ -908,24 +1173,28 @@ export class Game {
         this.log(`TUR ${this.turn} BAŞLADI`);
 
         this.players.forEach(p => {
+            // Reset market refreshes at start of turn
+            p.marketRefreshes = 0;
+
             // 1. Base Income & Farms
             const farms = p.grid.filter(c => c && c.type === 'Çiftlik').length;
             let income = 1 + farms;
 
-            // 1.5. Market Bonus (+1 per Market)
+            // 1.5. Market Bonus (+1 per Market) × Commerce Tech Multiplier
             const markets = p.grid.filter(c => c && c.type === 'Pazar').length;
-            income += markets;
+            const commerceTech = p.technologies.commerce;
+            const commerceMultipliers = [1, 1.5, 2, 2.5, 3]; // Level 0-4
+            const marketIncome = Math.floor(markets * commerceMultipliers[commerceTech]);
+            income += marketIncome;
 
             // 2. Vassal Taxes (Master gets +1 from each Vassal)
             const vassals = this.players.filter(v => v.masterId === p.id);
             income += vassals.length;
 
-            // 2.5. Alliance Bonus (+2 Gold if allied)
-            if (p.allianceWith !== null) {
-                income += 2;
-            }
+            // NOTE: Alliance bonus removed - no passive gold from alliances
 
             // 3. Pay Tax (If Vassal, give 1 to Master)
+            // This continues even when gold cap is near limit
             if (p.isVassal && p.gold > 0) {
                 p.gold -= 1;
                 const master = this.players.find(m => m.id === p.masterId);
@@ -936,17 +1205,28 @@ export class Game {
                 }
             }
 
-            // 4. Check Global Gold Cap BEFORE adding income
-            const currentTotalGold = this.getTotalGold();
-            const goldCap = this.getGoldCap();
-            const availableGold = goldCap - currentTotalGold;
+            // 4. Check GLOBAL gold cap threshold (75% = 25% remaining)
+            const totalGoldEarned = this.getTotalGold();
+            const goldCapPerPlayer = this.getGoldCap(); // 65 per player
+            const totalGoldCap = goldCapPerPlayer * this.players.length;
+            const goldThreshold = totalGoldCap * 0.75; // 75% threshold
 
-            if (availableGold <= 0) {
-                this.log(`🚫 ALTIN HAVUZU DOLU! ${p.name} gelir alamadı.`);
+            if (totalGoldEarned >= goldThreshold) {
+                // Stop passive income when 75% of total cap is reached
+                this.log(`⚠️ Altın tavanına yaklaşıldı! (${totalGoldEarned}/${totalGoldCap}) Pasif gelir kesildi.`);
                 income = 0;
-            } else if (income > availableGold) {
-                income = availableGold;
-                this.log(`⚠️ ${p.name} kısmi gelir aldı: ${income} Altın (Havuz doldu)`);
+            } else {
+                // 5. Check Per-Player Gold Cap for capping income
+                const currentGold = p.gold;
+                const availableGold = goldCapPerPlayer - currentGold;
+
+                if (availableGold <= 0) {
+                    this.log(`🚫 ${p.name} altın limitinde! Gelir alamadı. (${currentGold}/${goldCapPerPlayer})`);
+                    income = 0;
+                } else if (income > availableGold) {
+                    income = availableGold;
+                    this.log(`⚠️ ${p.name} kısmi gelir aldı: ${income} Altın (Limit: ${goldCapPerPlayer})`);
+                }
             }
 
             p.gold += income;
@@ -1057,7 +1337,8 @@ export class Game {
     }
 
     getGoldCap() {
-        return this.players.length * 50;
+        // Per-player gold cap (not global pool)
+        return 65;
     }
 
     checkCapacity(player) {
@@ -1178,6 +1459,15 @@ export class Game {
                                 player.grid[targetSlot.idx] = target.grid[randomUnit.idx];
                                 target.grid[randomUnit.idx] = null;
                                 this.log(`🎭 PROPAGANDA BAŞARILI! ${player.name}, ${target.name}'den ${stolenUnitType} çaldı ve kendi ordusuna kattı!`);
+
+                                // Show propaganda success notification
+                                this.showPropagandaNotification({
+                                    attacker: player.name,
+                                    attackerColor: player.color,
+                                    defender: target.name,
+                                    defenderColor: target.color,
+                                    unitName: stolenUnitType
+                                });
                             } else {
                                 this.log(`⚠️ PROPAGANDA BAŞARISIZ! ${player.name}'in boş alanı yok, birim çalınamadı!`);
                             }
@@ -1336,10 +1626,48 @@ export class Game {
             return { success: false, msg: `Yetersiz nüfus! ${card.popCost} nüfus gerekli. (Mevcut: ${totalPop})` };
         }
 
-        // Check if player already has this level or higher
-        const currentLevel = player.technologies[card.techType];
-        if (currentLevel >= card.level) {
-            return { success: false, msg: "Bu teknolojiye zaten sahipsin!" };
+        let targetTechType = card.techType;
+        let targetLevel = card.level;
+
+        // Special handling for Joker card
+        if (card.isJoker) {
+            // Ask player which technology to upgrade
+            const techOptions = [
+                { type: 'military', name: 'Silah (Askeri Güç)', currentLevel: player.technologies.military },
+                { type: 'defense', name: 'Savunma (Bina HP)', currentLevel: player.technologies.defense },
+                { type: 'commerce', name: 'Ticaret (Pazar Geliri)', currentLevel: player.technologies.commerce }
+            ];
+
+            // Filter out maxed techs (level 4)
+            const availableTechs = techOptions.filter(t => t.currentLevel < 4);
+
+            if (availableTechs.length === 0) {
+                return { success: false, msg: "Tüm teknolojilerin maksimum seviyede!" };
+            }
+
+            // Build prompt message
+            let promptMsg = "Joker kartı ile hangi teknolojiyi geliştirmek istiyorsun?\n\n";
+            availableTechs.forEach((tech, idx) => {
+                promptMsg += `${idx + 1}. ${tech.name} (Şu an: Lv${tech.currentLevel} → Lv${tech.currentLevel + 1})\n`;
+            });
+            promptMsg += "\nNumara seç (1-" + availableTechs.length + "):";
+
+            const choice = window.prompt(promptMsg);
+            const choiceNum = parseInt(choice);
+
+            if (!choiceNum || choiceNum < 1 || choiceNum > availableTechs.length) {
+                return { success: false, msg: "Geçersiz seçim!" };
+            }
+
+            const selectedTech = availableTechs[choiceNum - 1];
+            targetTechType = selectedTech.type;
+            targetLevel = selectedTech.currentLevel + 1;
+        } else {
+            // Regular tech card - check if player already has this level or higher
+            const currentLevel = player.technologies[card.techType];
+            if (currentLevel >= card.level) {
+                return { success: false, msg: "Bu teknolojiye zaten sahipsin!" };
+            }
         }
 
         // Consume population from Meclis civilians first, then garrison
@@ -1368,12 +1696,13 @@ export class Game {
         player.actionsRemaining -= 1;
 
         // Apply technology
-        player.technologies[card.techType] = card.level;
+        player.technologies[targetTechType] = targetLevel;
 
         // Remove card from hand
         player.hand.splice(handIndex, 1);
 
-        this.log(`${player.name}, ${card.name} araştırdı! (${card.techType} Lv${card.level})`);
+        const techName = card.isJoker ? `${targetTechType} Lv${targetLevel}` : card.name;
+        this.log(`${player.name}, ${techName} araştırdı!`);
         this.checkAutoEndTurn();
         return { success: true };
     }

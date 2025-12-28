@@ -1,0 +1,137 @@
+.attack-result-notification {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.attack-result-notification.show {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+}
+
+.attack-result-content {
+    padding: 24px 36px;
+    border-radius: 12px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 60px rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    color: white;
+    text-align: center;
+    min-width: 400px;
+}
+
+.attack-result-header {
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin-bottom: 12px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    font-family: 'Cinzel', serif;
+}
+
+.attack-result-details {
+    font-size: 1rem;
+    line-height: 1.8;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    font-family: 'Inter', sans-serif;
+}
+
+.attack-result-details div {
+    margin: 4px 0;
+}
+
+/* Attack Start Notification */
+.attack-start-notification {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.attack-start-notification.show {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+}
+
+.attack-start-content {
+    padding: 24px 36px;
+    border-radius: 12px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 60px rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    color: white;
+    text-align: center;
+    min-width: 400px;
+}
+
+.attack-start-header {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 12px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    font-family: 'Cinzel', serif;
+}
+
+.attack-start-details {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.attack-start-details div {
+    margin: 4px 0;
+}
+
+/* Propaganda Notification */
+.propaganda-notification {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.propaganda-notification.show {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+}
+
+.propaganda-content {
+    padding: 24px 36px;
+    border-radius: 12px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 60px rgba(255, 215, 0, 0.3);
+    backdrop-filter: blur(10px);
+    color: white;
+    text-align: center;
+    min-width: 400px;
+}
+
+.propaganda-header {
+    font-size: 1.4rem;
+    font-weight: bold;
+    margin-bottom: 12px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    font-family: 'Cinzel', serif;
+}
+
+.propaganda-details {
+    font-size: 1rem;
+    line-height: 1.8;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.propaganda-details div {
+    margin: 4px 0;
+}

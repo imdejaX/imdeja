@@ -62,9 +62,10 @@ export class Renderer {
         const goldDisplay = document.getElementById('gold-display');
         const activePlayer = this.game.getActivePlayer();
 
-        // Calculate current total gold (not earned)
-        const currentTotalGold = this.game.getTotalGold();
-        const goldCap = this.game.getGoldCap();
+        // Show total EARNED gold across all players (not current gold)
+        const totalGoldEarned = this.game.getTotalGold(); // Uses totalGoldEarned
+        const goldCapPerPlayer = this.game.getGoldCap(); // 65 per player
+        const totalGoldCap = goldCapPerPlayer * this.game.players.length; // 65 × player count
 
         if (turnDiv) {
             turnDiv.innerHTML = `
@@ -75,8 +76,8 @@ export class Renderer {
         }
 
         if (goldDisplay) {
-            const color = currentTotalGold >= goldCap ? '#ef4444' : 'var(--color-gold)';
-            goldDisplay.innerHTML = `<span style="color: ${color}; font-weight: 600;">💰 ${currentTotalGold}/${goldCap}</span>`;
+            const color = totalGoldEarned >= totalGoldCap ? '#ef4444' : 'var(--color-gold)';
+            goldDisplay.innerHTML = `<span style="color: ${color}; font-weight: 600;">💰 ${totalGoldEarned}/${totalGoldCap}</span>`;
         }
 
         // Add New Game button if game ended
@@ -240,7 +241,7 @@ export class Renderer {
                 ${p.whiteFlagTurns > 0 ? `<div class="white-flag-badge" style="background: rgba(255, 255, 255, 0.15); border: 2px solid #f0f0f0; color: #ffffff; padding: 6px 10px; border-radius: 6px; font-weight: 700; margin-top: 6px; text-align: center; box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);">🏳️ Barış Koruması (${p.whiteFlagTurns} Tur)</div>` : ''}
                 ${p.militaryBoost && p.militaryBoost > 0 ? `<div class="military-boost-badge">⚔️ Askeri Bonus: +${p.militaryBoost}</div>` : ''}
                 
-                <div class="kingdom-grid">
+                <div class="kingdom-grid ${p.whiteFlagTurns > 0 ? 'white-flag-active' : ''}">
                     ${p.grid.map((cell, idx) => `
                         <div class="grid-cell 
                             ${cell?.type === 'Meclis' ? 'meclis' : ''} 
@@ -382,14 +383,32 @@ export class Renderer {
 
             const breakBtn = div.querySelector('.btn-break-alliance');
             if (breakBtn) {
-                breakBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (confirm('İttifakı bozmak istediğinden emin misin? (-2 DP cezası)')) {
-                        const result = this.game.breakAlliance();
-                        if (result.success === false) alert(result.msg);
-                        this.render();
-                    }
+                // Add hover effect
+                breakBtn.addEventListener('mouseenter', () => {
+                    breakBtn.style.background = '#b91c1c';
                 });
+                breakBtn.addEventListener('mouseleave', () => {
+                    breakBtn.style.background = '#dc2626';
+                });
+
+                breakBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    // Use window.confirm explicitly
+                    const confirmed = window.confirm('İttifakı bozmak istediğinden emin misin?\n\nCezalar:\n- 2 Diplomasi Puanı kaybedersin\n- Aksiyon harcarsın\n- Eski müttefikin +3 Altın kazanır');
+
+                    if (confirmed) {
+                        try {
+                            const result = this.game.breakAlliance();
+                            if (result.success === false) {
+                                alert(result.msg);
+                            }
+                            this.render();
+                        } catch (err) {
+                            console.error(err);
+                            alert("İşlem sırasında bir hata oluştu: " + err.message);
+                        }
+                    }
+                };
             }
 
             // Vassal Grid Viewing Buttons
@@ -478,7 +497,16 @@ export class Renderer {
 
     renderMarket() {
         this.containers.market.innerHTML = '';
-        this.game.openMarket.forEach((card, index) => {
+
+        // Sort cards in specified order: Bina, Asker, Diplomasi, Teknoloji
+        const typeOrder = { 'Bina': 1, 'Asker': 2, 'Diplomasi': 3, 'Teknoloji': 4 };
+        const sortedMarket = [...this.game.openMarket].sort((a, b) => {
+            return (typeOrder[a.type] || 99) - (typeOrder[b.type] || 99);
+        });
+
+        sortedMarket.forEach((card, index) => {
+            // Find original index for buyCard function
+            const originalIndex = this.game.openMarket.indexOf(card);
             const el = document.createElement('div');
             const isPoolSoldier = card.isPoolSoldier || false;
 
@@ -529,7 +557,7 @@ export class Renderer {
             `;
 
             el.addEventListener('click', () => {
-                const result = this.game.buyCard(index);
+                const result = this.game.buyCard(originalIndex);
                 if (result.success === false) {
                     alert(result.msg);
                 }
@@ -617,28 +645,73 @@ export class Renderer {
                 <div class="dice-prompt-content">
                     <h2>🎲 Zar At</h2>
                     <p>Saldırı için zar atmaya hazır mısın?</p>
-                    <button id="roll-dice-btn" class="btn btn-primary">🎲 Zar At!</button>
+                    <div style="display: flex; gap: 10px; justify-content: center;">
+                        <button id="roll-dice-btn" class="btn btn-primary">🎲 Zar At!</button>
+                        <button id="cancel-dice-btn" class="btn btn-secondary" style="background: #6b7280; color: white;">❌ Vazgeç</button>
+                    </div>
                 </div>
             `;
             document.body.appendChild(prompt);
 
-            // Add event listener
+            // Add event listener for Roll Dice button
             document.getElementById('roll-dice-btn').addEventListener('click', () => {
                 const result = this.game.rollDiceForAttack();
                 if (result.success && result.showDice) {
                     // Hide prompt
                     prompt.style.display = 'none';
-                    // Show dice animation
+
+                    // Show dice animation (2 seconds)
                     this.showDiceRoll(this.game.lastDiceRoll);
+
+                    // After dice animation (2s), show attack start notification
                     setTimeout(() => {
-                        // Show attack result notification after dice animation
-                        if (this.game.lastAttackResult) {
-                            this.showAttackResult(this.game.lastAttackResult);
-                            this.game.lastAttackResult = null; // Clear after showing
-                        }
+                        const attacker = this.game.players.find(p => p.id === this.game.activePlayerIndex);
+                        const attackData = this.game.lastDiceRoll;
+                        const attackResult = this.game.lastAttackResult;
+
+                        // Get attacker and defender info
+                        const attackerPlayer = this.game.players.find(p => p.name === attackData.attackerName);
+                        const defenderPlayer = this.game.players.find(p => p.name === attackData.defenderName);
+
+                        // Stage 1: Attack start notification
+                        this.game.showAttackStartNotification({
+                            attacker: attackData.attackerName,
+                            attackerColor: attackerPlayer.color,
+                            defender: attackData.defenderName,
+                            defenderColor: defenderPlayer.color,
+                            target: attackResult.targetType
+                        });
+
+                        // Stage 2: Attack result notification after 3 more seconds
+                        setTimeout(() => {
+                            this.game.showAttackResultNotification({
+                                attacker: attackData.attackerName,
+                                attackerColor: attackerPlayer.color,
+                                defender: attackData.defenderName,
+                                defenderColor: defenderPlayer.color,
+                                target: attackResult.targetType,
+                                damage: attackResult.damage || 0,
+                                attackRoll: attackData.attacker,
+                                defenseRoll: attackData.defender,
+                                success: attackResult.success,
+                                destroyed: attackResult.destroyed || false
+                            });
+                        }, 3000);
+
                         this.render();
                     }, 2000);
                 }
+            });
+
+            // Add event listener for Cancel button
+            document.getElementById('cancel-dice-btn').addEventListener('click', () => {
+                // Clear pending attack
+                this.game.pendingAttack = null;
+                this.game.clearActionMode();
+                // Hide prompt
+                prompt.style.display = 'none';
+                // Re-render to update UI
+                this.render();
             });
         }
 
@@ -676,7 +749,7 @@ export class Renderer {
         }, 2000);
     }
 
-    showAttackNotification(attackers) {
+    showAttackNotification(attackInfoArray) {
         // Create or get notification element
         let notification = document.getElementById('attack-notification');
         if (!notification) {
@@ -686,12 +759,52 @@ export class Renderer {
             document.body.appendChild(notification);
         }
 
-        // Set content - attackers now contains "X → Y" format
+        // Process attack info - handle both old string format and new object format
+        let attackText = '';
+        let attackerColor = '#dc2626'; // Default red
+        let defenderColor = '#991b1b'; // Default dark red
+
+        if (Array.isArray(attackInfoArray)) {
+            // Multiple attacks or array of attack objects
+            if (attackInfoArray.length > 0) {
+                const firstAttack = attackInfoArray[0];
+                if (typeof firstAttack === 'object') {
+                    // New format with colors
+                    attackText = attackInfoArray.map(a => a.text).join(', ');
+                    attackerColor = firstAttack.attackerColor;
+                    defenderColor = firstAttack.defenderColor;
+                } else {
+                    // Old string format
+                    attackText = attackInfoArray.join(', ');
+                }
+            }
+        } else if (typeof attackInfoArray === 'object') {
+            // Single attack object
+            attackText = attackInfoArray.text;
+            attackerColor = attackInfoArray.attackerColor;
+            defenderColor = attackInfoArray.defenderColor;
+        } else {
+            // Old string format
+            attackText = attackInfoArray;
+        }
+
+        // Create gradient from attacker color (left) to defender color (right)
+        // Smooth transition with center meeting point
+        const gradient = `linear-gradient(90deg, ${attackerColor} 0%, ${attackerColor} 20%, 
+                         color-mix(in srgb, ${attackerColor} 50%, ${defenderColor} 50%) 50%, 
+                         ${defenderColor} 80%, ${defenderColor} 100%)`;
+
+        // Create border gradient (lighter versions)
+        const borderGradient = `linear-gradient(90deg, 
+                                color-mix(in srgb, ${attackerColor} 70%, white 30%) 0%, 
+                                color-mix(in srgb, ${defenderColor} 70%, white 30%) 100%)`;
+
+        // Set content with dynamic gradient
         notification.innerHTML = `
-            <div class="attack-notification-content">
+            <div class="attack-notification-content" style="background: ${gradient}; border-image: ${borderGradient} 1; border-image-slice: 1;">
                 <div class="attack-icon">⚔️</div>
                 <div class="attack-message">
-                    <strong>${attackers}</strong> saldırısı!
+                    <strong>${attackText}</strong> saldırısı!
                 </div>
             </div>
         `;

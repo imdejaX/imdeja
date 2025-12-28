@@ -1,109 +1,146 @@
-
 import { Game } from './core/game.js';
 import { Renderer } from './core/renderer.js';
 import { BotAI } from './core/bot.js';
 
-// Entry Point
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("Krallıkların Terazisi Başlatılıyor...");
-
-    // Initialize Core Game
+    // Game initialization
     const game = new Game();
-    window.game = game; // Make globally accessible for modal updates
-
-    // Initialize Bot AI
-    const botAI = new BotAI(game);
-    window.botAI = botAI;
-
-    // Initialize Renderer
     const renderer = new Renderer(game);
-    window.renderer = renderer; // Make globally accessible
+    const botAI = new BotAI(game);
 
-    // Start Interaction
-    game.start();
-    renderer.render();
+    // Make bot and renderer globally accessible for game callbacks
+    window.botAI = botAI;
+    window.renderer = renderer;
+
+    try {
+        // Initial render
+        game.initializeGame();
+        renderer.render();
+    } catch (e) {
+        console.error("Game Initialization Error:", e);
+        alert("Oyun başlatılırken hata oluştu: " + e.message);
+    }
+
+    // UI Event Listeners
 
     // Home Button
     const homeBtn = document.getElementById('home-btn');
     if (homeBtn) {
         homeBtn.addEventListener('click', () => {
-            const confirmed = confirm('Oyunu bitirip anasayfaya dönmek istediğinize emin misiniz?');
-            if (confirmed) {
+            if (confirm('Ana menüye dönmek istediğinize emin misiniz? (Oyun kaydedilmeyecek)')) {
                 window.location.href = 'menu.html';
             }
         });
     }
 
     // Market Modal
-    const marketModal = document.getElementById('market-modal');
     const marketBtn = document.getElementById('market-btn');
+    const marketModal = document.getElementById('market-modal');
+
+    // Helper: Update Refresh Button UI
+    function updateRefreshButtonUI() {
+        const activePlayer = game.getActivePlayer();
+        const refreshBtn = document.getElementById('refresh-market-btn');
+        if (!refreshBtn) return;
+
+        // Ensure marketRefreshes is a number
+        if (!activePlayer) return;
+        if (typeof activePlayer.marketRefreshes !== 'number') {
+            activePlayer.marketRefreshes = 0;
+        }
+
+        const count = activePlayer.marketRefreshes;
+        const remaining = Math.max(0, 2 - count);
+
+        // Update Button Content with Badge
+        const badgeClass = remaining === 0 ? 'refresh-badge zero' : 'refresh-badge';
+        refreshBtn.innerHTML = `
+            <span>🔄 Yenile</span>
+            <span class="${badgeClass}">${remaining}</span>
+        `;
+
+        refreshBtn.title = `Pazarı Yenile (Kalan Hakkınız: ${remaining})`;
+
+        // Update Button State
+        if (count >= 2) {
+            refreshBtn.disabled = true;
+        } else {
+            refreshBtn.disabled = false;
+        }
+    }
+
     if (marketBtn && marketModal) {
         marketBtn.addEventListener('click', () => {
             // Update player resources display
             const activePlayer = game.getActivePlayer();
-            document.getElementById('market-player-gold').textContent = activePlayer.gold;
+            const goldDisplay = document.getElementById('market-player-gold');
+            if (goldDisplay && activePlayer) goldDisplay.textContent = activePlayer.gold;
 
-            // Calculate capacity
-            const farms = activePlayer.grid.filter(c => c && c.type === 'Çiftlik').length;
-            const baseCapacity = 2 + (farms * 3);
-            const foodTech = activePlayer.technologies.food;
-            const techMultipliers = [1, 1.5, 3, 4.5, 6];
-            const capacity = Math.floor(baseCapacity * techMultipliers[foodTech]);
-            const armyCount = activePlayer.grid.filter(c => c && c.isUnit).length;
-            const totalPop = activePlayer.pop + armyCount;
+            // Reset refresh button state
+            if (activePlayer) updateRefreshButtonUI();
 
-            document.getElementById('market-player-capacity').textContent = `${totalPop}/${capacity}`;
-
-            // Update refresh count and button state
-            document.getElementById('market-refresh-count').textContent = activePlayer.marketRefreshesRemaining;
-
-            const refreshBtn = document.getElementById('refresh-market-btn');
-            if (activePlayer.marketRefreshesRemaining <= 0) {
-                refreshBtn.disabled = true;
-                refreshBtn.style.opacity = '0.5';
-                refreshBtn.style.cursor = 'not-allowed';
-            } else {
-                refreshBtn.disabled = false;
-                refreshBtn.style.opacity = '1';
-                refreshBtn.style.cursor = 'pointer';
-            }
+            // Update deck card counts for strategic planning
+            const deckCounts = game.getDeckCardCounts();
+            document.getElementById('deck-count-bina').textContent = deckCounts['Bina'];
+            document.getElementById('deck-count-asker').textContent = deckCounts['Asker'];
+            document.getElementById('deck-count-diplomasi').textContent = deckCounts['Diplomasi'];
+            document.getElementById('deck-count-teknoloji').textContent = deckCounts['Teknoloji'];
 
             marketModal.showModal();
         });
     }
 
-    document.getElementById('close-market-btn').addEventListener('click', () => {
-        marketModal.close();
-    });
+    const closeMarketBtn = document.getElementById('close-market-btn');
+    if (closeMarketBtn) {
+        closeMarketBtn.addEventListener('click', () => {
+            marketModal.close();
+        });
+    }
 
     // Refresh Market Button
-    document.getElementById('refresh-market-btn').addEventListener('click', () => {
-        const result = game.refreshMarket();
-        if (result.success === false) {
-            alert(result.msg);
-        } else {
-            // Update refresh count
-            const activePlayer = game.getActivePlayer();
-            document.getElementById('market-refresh-count').textContent = activePlayer.marketRefreshesRemaining;
+    const refreshMarketBtn = document.getElementById('refresh-market-btn');
+    if (refreshMarketBtn) {
+        refreshMarketBtn.addEventListener('click', () => {
+            const result = game.refreshMarket();
+            if (result.success === false) {
+                alert(result.msg);
+            } else {
+                // Update UI after successful refresh
+                updateRefreshButtonUI();
 
-            // Disable button if no refreshes left
-            const refreshBtn = document.getElementById('refresh-market-btn');
-            if (activePlayer.marketRefreshesRemaining <= 0) {
-                refreshBtn.disabled = true;
-                refreshBtn.style.opacity = '0.5';
-                refreshBtn.style.cursor = 'not-allowed';
+                // Re-render market grid
+                renderer.render();
             }
+        });
+    }
 
-            // Re-render market
+    // Close modal on outside click
+    if (marketModal) {
+        marketModal.addEventListener('click', (e) => {
+            if (e.target === marketModal) {
+                marketModal.close();
+            }
+        });
+    }
+
+    // End Turn
+    const endTurnBtn = document.getElementById('end-turn-btn');
+    if (endTurnBtn) {
+        endTurnBtn.addEventListener('click', () => {
+            game.endTurn();
+            renderer.render();
+        });
+    }
+
+    // Keyboard Shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (marketModal && marketModal.open) marketModal.close();
+            // Close other modals if any
+            game.clearActionMode();
             renderer.render();
         }
     });
 
-    // Close modal on outside click
-    marketModal.addEventListener('click', (e) => {
-        if (e.target === marketModal) {
-            marketModal.close();
-        }
-    });
-
+    console.log("Game initialized with new UI.");
 });

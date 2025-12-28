@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="dice-prompt.css">
     <link rel="stylesheet" href="action-mode.css">
     <link rel="stylesheet" href="attack-notification.css">
+    <link rel="stylesheet" href="attack-result-notification.css">
     <link rel="stylesheet" href="attack-result.css">
     <link rel="stylesheet" href="tech-card.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -61,14 +62,23 @@
                     <h2>🏪 Pazar Yeri</h2>
                     <div class="player-resources-display">
                         <span class="resource-item">💰 <span id="market-player-gold">0</span></span>
-                        <span class="resource-item">👥 <span id="market-player-capacity">0/0</span></span>
-                        <span class="resource-item">🔄 <span id="market-refresh-count">2</span></span>
+                        <!-- No refresh limit - counter removed -->
                     </div>
-                    <button class="icon-btn refresh-btn" id="refresh-market-btn" title="Pazarı Yenile">🔄</button>
+                    <button class="market-refresh-btn" id="refresh-market-btn" title="Pazarı Yenile">
+                        <span>🔄 Yenile</span>
+                        <span class="refresh-badge" id="refresh-badge-count">2</span>
+                    </button>
                     <button class="icon-btn" id="close-market-btn">✖️</button>
                 </div>
                 <div class="market-info">
                     <p>Her tur market yenilenir. Paralı askerler veya teknolojiler satın alabilirsin.</p>
+                </div>
+                <div id="deck-counts"
+                    style="display: flex; justify-content: center; gap: 16px; margin: 12px 0; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 0.85rem;">
+                    <span style="color: #fbbf24;">🏗️ Bina: <strong id="deck-count-bina">0</strong></span>
+                    <span style="color: #ef4444;">⚔️ Asker: <strong id="deck-count-asker">0</strong></span>
+                    <span style="color: #8b5cf6;">🎭 Diplomasi: <strong id="deck-count-diplomasi">0</strong></span>
+                    <span style="color: #10b981;">🔬 Teknoloji: <strong id="deck-count-teknoloji">0</strong></span>
                 </div>
                 <!-- Renderer buraya kartları basacak -->
                 <div id="market-cards" class="market-grid"></div>

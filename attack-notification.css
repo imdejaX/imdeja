@@ -17,8 +17,8 @@
 }
 
 .attack-notification-content {
-    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
-    border: 3px solid #fca5a5;
+    /* Background is now set dynamically via inline style with kingdom colors */
+    border: 3px solid;
     border-radius: 12px;
     padding: 30px 50px;
     box-shadow:
