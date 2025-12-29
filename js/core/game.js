@@ -8,6 +8,7 @@ export class Game {
         this.pendingDiplomacyCard = null; // For click-to-target diplomacy cards
         this.gameEnded = false; // Track if game has ended
         this.botTurnInProgress = false; // Prevent bot turn loops
+        this.isCalculatingCombat = false; // Flag to wait for combat animation
 
         // Get player count and bot count from localStorage
         const playerCount = parseInt(localStorage.getItem('playerCount')) || 2;
@@ -179,6 +180,10 @@ export class Game {
                 // For tech cards, apply player-specific filters
                 cardIndex = this.market.findIndex(c => {
                     if (c.type !== 'Teknoloji') return false;
+
+                    // Joker is always valid as a tech slot
+                    if (c.isJoker) return true;
+
                     const currentLevel = player.technologies[c.techType];
                     if (c.level !== currentLevel + 1) return false;
                     const hasInHand = player.hand.some(h =>
@@ -247,7 +252,15 @@ export class Game {
         if (attempts >= maxAttempts && this.openMarket.length < 4 && this.market.length > 0) {
             console.warn('Market refill strict mode failed, drawing random...');
             while (this.openMarket.length < 4 && this.market.length > 0) {
-                this.openMarket.push(this.market.pop());
+                const card = this.market.pop();
+
+                // Still apply absolute tech level check even in fallback
+                if (card.type === 'Teknoloji' && !card.isJoker) {
+                    const currentLevel = player.technologies[card.techType];
+                    if (card.level <= currentLevel) continue; // Skip obsolete tech
+                }
+
+                this.openMarket.push(card);
             }
         }
     }
@@ -1051,10 +1064,13 @@ export class Game {
     async showCombatCalculation(combatData) {
         // Dynamically import combat calculator
         try {
+            this.isCalculatingCombat = true;
             const { combatCalculator } = await import('./combatCalculator.js');
             await combatCalculator.showCombatCalculation(combatData);
+            this.isCalculatingCombat = false;
         } catch (error) {
             console.error('Failed to load combat calculator:', error);
+            this.isCalculatingCombat = false;
         }
     }
 
@@ -1122,6 +1138,12 @@ export class Game {
         const player = this.getActivePlayer();
         // Auto-end turn for ALL players when actions reach 0
         if (player.actionsRemaining <= 0) {
+            // Wait for combat calculation to finish
+            if (this.isCalculatingCombat) {
+                setTimeout(() => this.checkAutoEndTurn(), 1000);
+                return;
+            }
+
             // Clear any existing timer first
             if (this.autoEndTimer) {
                 clearTimeout(this.autoEndTimer);
@@ -1131,13 +1153,14 @@ export class Game {
                 this.autoEndTimer = null;
                 this.endTurn();
                 window.renderer.render();
-            }, 6000); // Wait for dice animation (2s) + attack result notification (3s) + buffer
+            }, 3000); // Wait for dice animation (2s) + buffer
         }
     }
 
     endTurn() {
         if (this.phase === 'SONUÇ') return; // Game Over
         if (this.botTurnInProgress) return; // Prevent bot turn loops
+        if (this.isCalculatingCombat) return; // Wait for calculation to finish
 
         // CRITICAL: Clear any pending auto-end timer
         if (this.autoEndTimer) {
@@ -1321,6 +1344,14 @@ export class Game {
             // 2. Vassal Taxes (Master gets +1 from each Vassal)
             const vassals = this.players.filter(v => v.masterId === p.id);
             income += vassals.length;
+
+            // 2.5 Economic Balance: If gold is >= 50% of cap, reduce income by 50%
+            const goldCap = this.getGoldCap();
+            if (p.gold >= goldCap / 2) {
+                const originalIncome = income;
+                income = Math.max(1, Math.floor(income / 2));
+                this.log(`📉 ${p.name} zenginlik vergisi: Gelir %50 azaldı. (${originalIncome} → ${income})`);
+            }
 
             // NOTE: Alliance bonus removed - no passive gold from alliances
 
@@ -1834,8 +1865,47 @@ export class Game {
 
         const techName = card.isJoker ? `${targetTechType} Lv${targetLevel}` : card.name;
         this.log(`${player.name}, ${techName} araştırdı!`);
+
+        // Clean up deck from old tech levels
+        this.cleanupMarketDeck();
+
         this.checkAutoEndTurn();
         return { success: true };
+    }
+
+    /**
+     * Removes technology cards from current deck that are no longer needed
+     * (Lower or equal to current levels of all players)
+     */
+    cleanupMarketDeck() {
+        if (!this.market || this.market.length === 0) return;
+
+        // Collect max levels for each tech type across all players
+        const maxLevels = { food: 0, military: 0, defense: 0, commerce: 0 };
+        this.players.forEach(p => {
+            for (let type in p.technologies) {
+                maxLevels[type] = Math.max(maxLevels[type], p.technologies[type]);
+            }
+        });
+
+        // Filter market deck
+        const originalCount = this.market.length;
+        this.market = this.market.filter(c => {
+            if (c.type !== 'Teknoloji') return true;
+            if (c.isJoker) return true; // Keep Jokers
+
+            // Check if ANY player could still use this card (level >= playerLevel + 1)
+            // Actually, if we want to be strict for the ACTIVE player, we might hide them,
+            // but for the deck we only remove if NOBODY can ever use it.
+            return this.players.some(p => {
+                const current = p.technologies[c.techType];
+                return c.level === current + 1;
+            });
+        });
+
+        if (this.market.length < originalCount) {
+            console.log(`🧹 Market temizlendi: ${originalCount - this.market.length} eski teknoloji kartı kaldırıldı.`);
+        }
     }
 
     proposeAlliance(targetPlayerId) {

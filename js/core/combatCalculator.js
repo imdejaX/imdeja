@@ -51,7 +51,26 @@ export class CombatCalculator {
                 font-family: 'Courier New', monospace;
                 font-size: 0.95rem;
                 line-height: 1.8;
+                position: relative;
             ">
+                <button id="combat-skip-btn" style="
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    background: rgba(59, 130, 246, 0.3);
+                    border: 2px solid #3b82f6;
+                    color: white;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 0.85rem;
+                    font-weight: bold;
+                    transition: all 0.2s;
+                    font-family: 'Inter', sans-serif;
+                ">
+                    ⏩ SONUCU GÖSTER
+                </button>
+                
                 <div class="combat-header" style="
                     text-align: center;
                     font-size: 1.4rem;
@@ -69,6 +88,7 @@ export class CombatCalculator {
         `;
 
         const linesContainer = document.getElementById('combat-calc-lines');
+        const skipBtn = document.getElementById('combat-skip-btn');
 
         // Show modal
         modal.style.display = 'flex';
@@ -107,11 +127,29 @@ export class CombatCalculator {
             }
         ];
 
+        let skipped = false;
+
+        // Skip button functionality
+        skipBtn.addEventListener('click', () => {
+            skipped = true;
+            skipBtn.style.display = 'none';
+        });
+
         // Typewriter effect for each line
-        for (const line of lines) {
-            await this.typewriteLine(linesContainer, line);
+        for (let i = 0; i < lines.length; i++) {
+            if (skipped) {
+                // Show all remaining lines instantly
+                for (let j = i; j < lines.length; j++) {
+                    await this.typewriteLine(linesContainer, lines[j], true);
+                }
+                break;
+            }
+            await this.typewriteLine(linesContainer, lines[i]);
             await this.delay(this.lineDelay);
         }
+
+        // Hide skip button after completion
+        skipBtn.style.display = 'none';
 
         // Play result sound
         if (window.soundManager) {
@@ -132,7 +170,7 @@ export class CombatCalculator {
     /**
      * Typewriter effect for a single line
      */
-    async typewriteLine(container, lineData) {
+    async typewriteLine(container, lineData, instant = false) {
         const lineDiv = document.createElement('div');
         lineDiv.style.cssText = `
             color: ${lineData.color};
@@ -148,18 +186,23 @@ export class CombatCalculator {
             return;
         }
 
-        // Typewriter effect
-        let currentText = '';
-        for (const char of lineData.text) {
-            currentText += char;
-            lineDiv.textContent = currentText;
+        // Instant mode or typewriter effect
+        if (instant) {
+            lineDiv.textContent = lineData.text;
+        } else {
+            // Typewriter effect
+            let currentText = '';
+            for (const char of lineData.text) {
+                currentText += char;
+                lineDiv.textContent = currentText;
 
-            // Light tick sound for non-empty chars
-            if (char !== ' ' && window.soundManager && Math.random() > 0.7) {
-                window.soundManager.playTone(1200, 0.01, 'sine', 0.05);
+                // Light tick sound for non-empty chars
+                if (char !== ' ' && window.soundManager && Math.random() > 0.7) {
+                    window.soundManager.playTone(1200, 0.01, 'sine', 0.05);
+                }
+
+                await this.delay(this.typewriterSpeed);
             }
-
-            await this.delay(this.typewriterSpeed);
         }
     }
 
