@@ -318,12 +318,12 @@ export class BotAI {
                         // Wait for dice animation
                         await this.delay(500);
 
-                        // Roll dice
-                        const diceResult = this.game.rollDiceForAttack();
+                        // Roll dice and WAIT for calculation
+                        const diceResult = await this.game.rollDiceForAttack();
 
                         if (diceResult && diceResult.success) {
                             this.game.log(`🤖 ${player.name} saldırdı!`);
-                            await this.delay(2500); // Wait for dice animation + result
+                            await this.delay(2000); // Wait for result display
                         }
                     }
 

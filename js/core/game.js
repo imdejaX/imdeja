@@ -609,6 +609,9 @@ export class Game {
         const targetCell = defender.grid[targetSlotIndex];
         if (!targetCell) return { success: false, msg: "Boş alana saldırılmaz." };
 
+        // Clear any old dice roll data
+        this.lastDiceRoll = null;
+
         // Wall Shield System: All attacks automatically redirected to wall first
         const wall = defender.grid.find(c => c && c.type === 'Duvar');
         if (wall && targetCell.type !== 'Duvar') {
@@ -647,6 +650,28 @@ export class Game {
         return { success: true, waitingForDice: true };
     }
 
+    /**
+     * Pre-rolls dice for the pending attack so renderer can show animation
+     */
+    prepareAttackDice() {
+        if (!this.pendingAttack) return null;
+
+        const attacker = this.players.find(p => p.id === this.pendingAttack.attackerId);
+        const defender = this.players.find(p => p.id === this.pendingAttack.targetPlayerId);
+
+        const attackRoll = Math.floor(Math.random() * 6) + 1;
+        const defenseRoll = Math.floor(Math.random() * 6) + 1;
+
+        this.lastDiceRoll = {
+            attacker: attackRoll,
+            defender: defenseRoll,
+            attackerName: attacker.name,
+            defenderName: defender.name
+        };
+
+        return this.lastDiceRoll;
+    }
+
     // Phase 2: Roll Dice and Complete Attack
     async rollDiceForAttack() {
         if (!this.pendingAttack) {
@@ -678,16 +703,16 @@ export class Game {
         const totalMilitaryPower = attackerMilitary;
         const maxAttackPower = Math.ceil(totalMilitaryPower * 0.25); // 25% of total military
 
-        const attackRoll = Math.floor(Math.random() * 6) + 1;
-        const defenseRoll = Math.floor(Math.random() * 6) + 1;
-
-        // Store dice results for animation
-        this.lastDiceRoll = {
-            attacker: attackRoll,
-            defender: defenseRoll,
-            attackerName: attacker.name,
-            defenderName: defender.name
-        };
+        // Use prepared dice if available, otherwise roll new ones
+        let attackRoll, defenseRoll;
+        if (this.lastDiceRoll) {
+            attackRoll = this.lastDiceRoll.attacker;
+            defenseRoll = this.lastDiceRoll.defender;
+            this.lastDiceRoll = null; // Clear so it's only used once
+        } else {
+            attackRoll = Math.floor(Math.random() * 6) + 1;
+            defenseRoll = Math.floor(Math.random() * 6) + 1;
+        }
 
         // Apply military boost if available
         const militaryBonus = attacker.militaryBoost || 0;

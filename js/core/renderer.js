@@ -657,16 +657,23 @@ export class Renderer {
             document.getElementById('roll-dice-btn').addEventListener('click', async () => {
                 window.soundManager.playDiceRoll();
 
+                // Roll dice first so animation has data
+                const diceRoll = this.game.prepareAttackDice();
+                if (!diceRoll) {
+                    alert("Bekleyen saldırı verisi bulunamadı!");
+                    return;
+                }
+
                 // Hide prompt
                 prompt.style.display = 'none';
 
-                // Show dice animation FIRST (2 seconds)
-                this.showDiceRoll(this.game.lastDiceRoll);
+                // Show dice animation FIRST (2 seconds) with CURRENT roll data
+                this.showDiceRoll(diceRoll);
 
                 // Wait for dice animation to complete
                 await new Promise(resolve => setTimeout(resolve, 2000));
 
-                // NOW execute the attack with combat calculator
+                // NOW execute the attack with combat calculator (uses the prepared dice)
                 const result = await this.game.rollDiceForAttack();
 
                 if (result.success) {
