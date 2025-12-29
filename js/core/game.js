@@ -72,12 +72,29 @@ export class Game {
     }
 
     createDeck() {
-        const buildingCards = [
+        const playerCount = this.players.length;
+
+        // Dynamic Deck Scaling
+        // Ensure enough key buildings for everyone (3 Barracks, 2 Farms per player minimum)
+        const baseAndCount = Math.max(1, playerCount);
+
+        const buildingCards = [];
+        // Add Guaranteed Cards
+        for (let i = 0; i < baseAndCount * 2; i++) buildingCards.push({ name: 'Çiftlik', cost: 3, type: 'Bina', hp: 3, power: 2 });
+        for (let i = 0; i < baseAndCount * 3; i++) buildingCards.push({ name: 'Kışla', cost: 4, type: 'Bina', hp: 3, power: 3 });
+        for (let i = 0; i < baseAndCount * 1; i++) buildingCards.push({ name: 'Duvar', cost: 2, type: 'Bina', hp: 4, power: 5 });
+        for (let i = 0; i < baseAndCount * 1; i++) buildingCards.push({ name: 'Pazar', cost: 3, type: 'Bina', hp: 3, power: 2 });
+
+        // Add Random Extra Buildings (pool of 5 per player)
+        const extraBuildingTypes = [
             { name: 'Çiftlik', cost: 3, type: 'Bina', hp: 3, power: 2 },
             { name: 'Kışla', cost: 4, type: 'Bina', hp: 3, power: 3 },
             { name: 'Duvar', cost: 2, type: 'Bina', hp: 4, power: 5 },
-            { name: 'Pazar', cost: 3, type: 'Bina', hp: 3, power: 2 },
+            { name: 'Pazar', cost: 3, type: 'Bina', hp: 3, power: 2 }
         ];
+        for (let i = 0; i < playerCount * 4; i++) {
+            buildingCards.push(extraBuildingTypes[Math.floor(Math.random() * extraBuildingTypes.length)]);
+        }
 
         const militaryCards = [
             { name: 'Piyade', cost: 2, type: 'Asker', power: 2 },
@@ -120,36 +137,38 @@ export class Game {
 
         let deck = [];
 
-        // Add 15 building cards
-        for (let i = 0; i < 15; i++) {
-            const template = buildingCards[Math.floor(Math.random() * buildingCards.length)];
-            deck.push({ id: `card-${deck.length}`, ...template });
-        }
+        // Add Building Cards (Already Scaled)
+        buildingCards.forEach(c => deck.push({ id: `card-${deck.length}`, ...c }));
 
-        // Add 20 military cards
-        for (let i = 0; i < 20; i++) {
+        // Add Military Cards (Scale: 15 per player)
+        const militaryCount = playerCount * 15;
+        for (let i = 0; i < militaryCount; i++) {
             const template = militaryCards[Math.floor(Math.random() * militaryCards.length)];
             deck.push({ id: `card-${deck.length}`, ...template });
         }
 
-        // Add 18 diplomacy cards (increased from 10 for better strategic card availability)
-        for (let i = 0; i < 18; i++) {
+        // Add Diplomacy Cards (Scale: 8 per player)
+        const dipCount = playerCount * 8;
+        for (let i = 0; i < dipCount; i++) {
             const template = diplomacyCards[Math.floor(Math.random() * diplomacyCards.length)];
             deck.push({ id: `card-${deck.length}`, ...template });
         }
 
-        // Add 8 regular technology cards
+        // Add Technology Cards (Base set + duplicates based on player count)
         const regularTechCards = technologyCards.filter(c => !c.isJoker);
-        for (let i = 0; i < 8; i++) {
+        // Add 1 full set per 2 players approx, but ensure random distribution
+        const techCount = playerCount * 6;
+        for (let i = 0; i < techCount; i++) {
             const template = regularTechCards[Math.floor(Math.random() * regularTechCards.length)];
             deck.push({ id: `card-${deck.length}`, ...template });
         }
 
-        // Add 2 Joker cards (rare)
+        // Add Joker cards (1 per player)
         const jokerCard = technologyCards.find(c => c.isJoker);
         if (jokerCard) {
-            deck.push({ id: `card-${deck.length}`, ...jokerCard });
-            deck.push({ id: `card-${deck.length}`, ...jokerCard });
+            for (let i = 0; i < playerCount; i++) {
+                deck.push({ id: `card-${deck.length}`, ...jokerCard });
+            }
         }
 
         // Shuffle deck
@@ -158,10 +177,48 @@ export class Game {
             [deck[i], deck[j]] = [deck[j], deck[i]];
         }
 
+        console.log(`Deck created with ${deck.length} cards for ${playerCount} players.`);
         return deck;
     }
 
     refillMarket() {
+        // Market now shows 4 cards, RANDOM from remaining
+        if (this.openMarket.length >= 4) return;
+
+        const maxAttempts = 10;
+        let attempts = 0;
+        const player = this.getActivePlayer();
+
+        while (this.openMarket.length < 4 && (this.market.length > 0 || this.mercenaryPool.length > 0)) {
+            attempts++;
+            if (attempts > maxAttempts && this.openMarket.length > 0) break;
+
+            let card = null;
+
+            // 1. Mercenary Pool Prio
+            if (this.mercenaryPool.length > 0) {
+                card = this.mercenaryPool.pop();
+            }
+            // 2. Main Deck (Random Draw)
+            else if (this.market.length > 0) {
+                card = this.market.pop();
+
+                // Tech Checks (discard if obsolete)
+                if (card.type === 'Teknoloji' && !card.isJoker) {
+                    const currentLevel = player.technologies[card.techType];
+                    if (card.level <= currentLevel) continue;
+                }
+            }
+
+            if (card) {
+                this.openMarket.push(card);
+            } else {
+                break;
+            }
+        }
+    }
+
+    refillMarketOld() {
         // Market now shows 4 cards, one from each type
         if (this.openMarket.length >= 4) return;
 
@@ -1163,6 +1220,11 @@ export class Game {
         const player = this.getActivePlayer();
         // Auto-end turn for ALL players when actions reach 0
         if (player.actionsRemaining <= 0) {
+
+            // SECURITY CHECK: Ensure we are checking the ACTIVE player
+            // If the turn just changed (actions=2), this shouldn't fire.
+            if (player.id !== this.getActivePlayer().id) return;
+
             // Wait for combat calculation to finish
             if (this.isCalculatingCombat) {
                 setTimeout(() => this.checkAutoEndTurn(), 1000);
@@ -1445,11 +1507,22 @@ export class Game {
             });
 
             // 5.5. Farm Civilian Production (if farm exists)
+            // Throttle population growth: Only every 3 turns
+            const canGrowPop = this.turn % 3 === 0;
+
             const hasFarm = p.grid.some(c => c && c.type === 'Çiftlik');
             const meclis = p.grid[0];
-            if (hasFarm && meclis && meclis.garrison && meclis.garrison.length < 3) {
-                meclis.garrison.push({ name: 'Sivil', type: 'Nüfus', power: 0 });
-                this.log(`🌾 ${p.name}, Çiftlik 1 sivil üretti! (Meclis: ${meclis.garrison.length}/3)`);
+
+            if (canGrowPop) {
+                if (hasFarm && meclis && meclis.garrison && meclis.garrison.length < 3) {
+                    meclis.garrison.push({ name: 'Sivil', type: 'Nüfus', power: 0 });
+                    this.log(`🌾 ${p.name}, Çiftlik 1 sivil üretti! (Meclis: ${meclis.garrison.length}/3)`);
+                } else if (hasFarm) {
+                    this.log(`ℹ️ ${p.name} nüfusu tam, artış olmadı.`);
+                }
+            } else if (p.id === this.players[0].id && this.activePlayerIndex === 0) {
+                // Log once per turn cycle for info (checking first player only to avoid spam)
+                // Or better, log in global turn start
             }
 
 
