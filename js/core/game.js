@@ -80,17 +80,17 @@ export class Game {
 
         const buildingCards = [];
         // Add Guaranteed Cards
-        for (let i = 0; i < baseAndCount * 2; i++) buildingCards.push({ name: 'Çiftlik', cost: 3, type: 'Bina', hp: 3, power: 2 });
-        for (let i = 0; i < baseAndCount * 3; i++) buildingCards.push({ name: 'Kışla', cost: 4, type: 'Bina', hp: 3, power: 3 });
-        for (let i = 0; i < baseAndCount * 1; i++) buildingCards.push({ name: 'Duvar', cost: 2, type: 'Bina', hp: 4, power: 5 });
-        for (let i = 0; i < baseAndCount * 1; i++) buildingCards.push({ name: 'Pazar', cost: 3, type: 'Bina', hp: 3, power: 2 });
+        for (let i = 0; i < baseAndCount * 2; i++) buildingCards.push({ name: 'Çiftlik', cost: 3, type: 'Bina', hp: 3, power: 8 });
+        for (let i = 0; i < baseAndCount * 3; i++) buildingCards.push({ name: 'Kışla', cost: 4, type: 'Bina', hp: 3, power: 12 });
+        for (let i = 0; i < baseAndCount * 1; i++) buildingCards.push({ name: 'Duvar', cost: 2, type: 'Bina', hp: 4, power: 20 });
+        for (let i = 0; i < baseAndCount * 1; i++) buildingCards.push({ name: 'Pazar', cost: 3, type: 'Bina', hp: 3, power: 8 });
 
         // Add Random Extra Buildings (pool of 5 per player)
         const extraBuildingTypes = [
-            { name: 'Çiftlik', cost: 3, type: 'Bina', hp: 3, power: 2 },
-            { name: 'Kışla', cost: 4, type: 'Bina', hp: 3, power: 3 },
-            { name: 'Duvar', cost: 2, type: 'Bina', hp: 4, power: 5 },
-            { name: 'Pazar', cost: 3, type: 'Bina', hp: 3, power: 2 }
+            { name: 'Çiftlik', cost: 3, type: 'Bina', hp: 3, power: 8 },
+            { name: 'Kışla', cost: 4, type: 'Bina', hp: 3, power: 12 },
+            { name: 'Duvar', cost: 2, type: 'Bina', hp: 4, power: 20 },
+            { name: 'Pazar', cost: 3, type: 'Bina', hp: 3, power: 8 }
         ];
         for (let i = 0; i < playerCount * 4; i++) {
             buildingCards.push(extraBuildingTypes[Math.floor(Math.random() * extraBuildingTypes.length)]);
@@ -103,13 +103,13 @@ export class Game {
         ];
 
         const diplomacyCards = [
-            { name: 'Casusluk', cost: 3, type: 'Diplomasi', dp: 2, effect: 'steal_card' },
-            { name: 'Propaganda', cost: 4, type: 'Diplomasi', dp: 3, effect: 'steal_unit' },
-            { name: 'Suikast', cost: 15, type: 'Diplomasi', dp: 8, effect: 'assassination' },
-            { name: 'Askeri Gösteri', cost: 3, type: 'Diplomasi', dp: 2, effect: 'military_boost' },
-            { name: 'Nifak Tohumu', cost: 15, type: 'Diplomasi', dp: 3, effect: 'break_alliance', minMilitary: 20 },
-            { name: 'Beyaz Bayrak (1 Tur)', cost: 3, type: 'Diplomasi', dp: 1, effect: 'white_flag', duration: 1 },
-            { name: 'Beyaz Bayrak (2 Tur)', cost: 5, type: 'Diplomasi', dp: 2, effect: 'white_flag', duration: 2 }
+            { name: 'Casusluk', cost: 4, type: 'Diplomasi', dp: 1, effect: 'steal_card' },
+            { name: 'Propaganda', cost: 6, type: 'Diplomasi', dp: 2, effect: 'steal_unit' },
+            { name: 'Ekonomik İşbirliği', cost: 3, type: 'Diplomasi', dp: 1, effect: 'gold_boost' },
+            { name: 'Askeri Gösteri', cost: 3, type: 'Diplomasi', dp: 1, effect: 'military_boost' },
+            { name: 'Nifak Tohumu', cost: 7, type: 'Diplomasi', dp: 3, effect: 'break_alliance' },
+            { name: 'Beyaz Bayrak', cost: 5, type: 'Diplomasi', dp: 1, effect: 'white_flag', duration: 1 },
+            { name: 'Terör Jokeri', cost: 20, type: 'Diplomasi', dp: 0, effect: 'terror_joker' } // New Card
         ];
 
         const technologyCards = [
@@ -182,40 +182,68 @@ export class Game {
     }
 
     refillMarket() {
-        // Market now shows 4 cards, RANDOM from remaining
+        // Market enforces 4 cards: One of each type
         if (this.openMarket.length >= 4) return;
 
-        const maxAttempts = 10;
-        let attempts = 0;
+        const requiredTypes = ['Bina', 'Asker', 'Diplomasi', 'Teknoloji'];
         const player = this.getActivePlayer();
 
-        while (this.openMarket.length < 4 && (this.market.length > 0 || this.mercenaryPool.length > 0)) {
-            attempts++;
-            if (attempts > maxAttempts && this.openMarket.length > 0) break;
+        // Iterate through each required type and try to find a card
+        requiredTypes.forEach(type => {
+            // If we already have this type in the open market, skip
+            if (this.openMarket.some(c => c.type === type)) return;
 
-            let card = null;
-
-            // 1. Mercenary Pool Prio
-            if (this.mercenaryPool.length > 0) {
-                card = this.mercenaryPool.pop();
-            }
-            // 2. Main Deck (Random Draw)
-            else if (this.market.length > 0) {
-                card = this.market.pop();
-
-                // Tech Checks (discard if obsolete)
-                if (card.type === 'Teknoloji' && !card.isJoker) {
-                    const currentLevel = player.technologies[card.techType];
-                    if (card.level <= currentLevel) continue;
+            // 1. Check Mercenary Pool first (Only for Soldiers)
+            if (type === 'Asker' && this.mercenaryPool.length > 0) {
+                // Find first soldier in pool
+                const mercIndex = this.mercenaryPool.findIndex(c => c.type === 'Asker');
+                if (mercIndex !== -1) {
+                    this.openMarket.push(this.mercenaryPool.splice(mercIndex, 1)[0]);
+                    return; // Move to next type
                 }
             }
 
-            if (card) {
-                this.openMarket.push(card);
+            // 2. Search in Main Deck
+            if (type === 'Teknoloji') {
+                // Special handling for Technology: Find valid NEXT level card
+                // Search deck for a valid tech card
+                for (let i = 0; i < this.market.length; i++) {
+                    const card = this.market[i];
+                    if (card.type !== 'Teknoloji') continue;
+
+                    if (card.isJoker) {
+                        this.openMarket.push(this.market.splice(i, 1)[0]);
+                        break; // Found tech slot
+                    }
+
+                    const currentLevel = player.technologies[card.techType];
+
+                    if (card.level === currentLevel + 1) {
+                        // Valid next level - check if in hand
+                        const hasInHand = player.hand.some(h =>
+                            h.type === 'Teknoloji' &&
+                            h.techType === card.techType &&
+                            h.level === card.level
+                        );
+                        if (!hasInHand) {
+                            this.openMarket.push(this.market.splice(i, 1)[0]);
+                            break; // Found and added
+                        }
+                    } else if (card.level <= currentLevel) {
+                        // Obsolete card - remove from deck and continue searching
+                        this.market.splice(i, 1);
+                        i--;
+                    }
+                    // If future tech (level > current + 1), just skip
+                }
             } else {
-                break;
+                // Standard types (Bina, Asker, Diplomasi)
+                const cardIndex = this.market.findIndex(c => c.type === type);
+                if (cardIndex !== -1) {
+                    this.openMarket.push(this.market.splice(cardIndex, 1)[0]);
+                }
             }
-        }
+        });
     }
 
     refillMarketOld() {
@@ -397,14 +425,25 @@ export class Game {
     initializeBoard() {
         this.players.forEach(p => {
             p.grid[0] = {
-                type: 'Meclis', hp: 10, power: 5, garrison: [
+                type: 'Meclis', hp: 10, power: 20, garrison: [
                     { name: 'Sivil', type: 'Nüfus', power: 0 },
                     { name: 'Sivil', type: 'Nüfus', power: 0 },
                     { name: 'Sivil', type: 'Nüfus', power: 0 }
                 ]
             }; // Meclis starts with 3 population
-            p.grid[1] = { type: 'Çiftlik', hp: 5, power: 1 }; // Starting farm
-            p.grid[3] = { type: 'Kışla', hp: 6, power: 2, garrison: [] }; // Military building, tougher
+            p.grid[1] = { type: 'Çiftlik', hp: 5, power: 4 }; // Starting farm
+
+            // Starting Barracks with 5 soldiers
+            const startingSoldiers = [];
+            const soldierTypes = [
+                { name: 'Piyade', cost: 2, type: 'Asker', power: 2, hp: 3, isUnit: true },
+                { name: 'Okçu', cost: 3, type: 'Asker', power: 3, hp: 4, isUnit: true }
+            ];
+            for (let i = 0; i < 5; i++) {
+                startingSoldiers.push(soldierTypes[Math.floor(Math.random() * soldierTypes.length)]);
+            }
+
+            p.grid[3] = { type: 'Kışla', hp: 6, power: 8, garrison: startingSoldiers }; // Military building, starts with 5 soldiers
         });
         this.log("Krallıklar kuruldu.");
     }
@@ -1035,37 +1074,50 @@ export class Game {
                 }
                 // Check if it was Meclis
                 if (targetCell.type === 'Meclis') {
+                    const destroyedBuildingName = targetCell.type;
+                    const destroyedGarrison = targetCell.garrison ? [...targetCell.garrison] : []; // Capture garrison
+
                     defender.grid[targetSlotIndex] = null;
-                    this.makeVassal(defender, attacker);
-                } else if (targetCell.type === 'Kışla') {
-                    // Kışla already handled above (soldier distribution)
-                    defender.grid[targetSlotIndex] = null;
+                    this.log(`💥 ${defender.name}'in ${destroyedBuildingName} binası yıkıldı!`);
+
+                    // BARRACKS DESTRUCTION LOGIC (Salvage & Mercenary)
+                    if (destroyedBuildingName === 'Kışla' && destroyedGarrison.length > 0) {
+                        this.log(`🏚️ Kışla yıkıldı! ${destroyedGarrison.length} asker ortada kaldı.`);
+                        this.handleBarracksDestruction(attacker, defender, destroyedGarrison);
+                    }
+
+                    // Check Game Over (Meclis destroyed)
+                    if (destroyedBuildingName === 'Meclis') {
+                        this.log(`👑 ${defender.name} MECLİSİ DÜŞTÜ!`);
+                        this.eliminatePlayer(defender.id, attacker.id); // Assuming eliminatePlayer exists and takes player ID and attacker ID
+                    } else {
+                        // Other buildings: give 1 gold reward
+                        attacker.gold += 1;
+                        attacker.totalGoldEarned += 1;
+                        this.log(`💰 ${attacker.name} yıkımdan 1 Altın kazandı!`);
+                    }
                 } else {
-                    // Other buildings: give 1 gold reward
-                    defender.grid[targetSlotIndex] = null;
-                    attacker.gold += 1;
-                    attacker.totalGoldEarned += 1;
-                    this.log(`💰 ${attacker.name} yıkımdan 1 Altın kazandı!`);
+                    this.log(`🛡️ ${defender.name}, ${targetCell.type} hasar aldı. Kalan HP: ${targetCell.hp}`);
                 }
+            } else {
+                // Store result for notification (shown after dice animation)
+                this.lastAttackResult = {
+                    success: false,
+                    targetType: targetCell.type
+                };
             }
-        } else {
-            // Store result for notification (shown after dice animation)
-            this.lastAttackResult = {
-                success: false,
-                targetType: targetCell.type
-            };
+
+            // Clear pending attack
+            this.pendingAttack = null;
+            this.clearActionMode(); // Clear mode after action
+
+            // Notifications will be shown by renderer after dice animation (2s)
+            // Stage 1: Attack start notification (after dice)
+            // Stage 2: Attack result notification (after 3s more)
+
+            this.checkAutoEndTurn();
+            return { success: true, showDice: true };
         }
-
-        // Clear pending attack
-        this.pendingAttack = null;
-        this.clearActionMode(); // Clear mode after action
-
-        // Notifications will be shown by renderer after dice animation (2s)
-        // Stage 1: Attack start notification (after dice)
-        // Stage 2: Attack result notification (after 3s more)
-
-        this.checkAutoEndTurn();
-        return { success: true, showDice: true };
     }
 
     showAttackResultNotification(attackData) {
@@ -1217,17 +1269,22 @@ export class Game {
     }
 
     checkAutoEndTurn() {
+        if (this.isTurnTransitioning) return; // Locked during transition
+
         const player = this.getActivePlayer();
         // Auto-end turn for ALL players when actions reach 0
         if (player.actionsRemaining <= 0) {
 
             // SECURITY CHECK: Ensure we are checking the ACTIVE player
-            // If the turn just changed (actions=2), this shouldn't fire.
             if (player.id !== this.getActivePlayer().id) return;
 
             // Wait for combat calculation to finish
             if (this.isCalculatingCombat) {
-                setTimeout(() => this.checkAutoEndTurn(), 1000);
+                if (this.combatWaitTimer) clearTimeout(this.combatWaitTimer);
+                this.combatWaitTimer = setTimeout(() => {
+                    this.combatWaitTimer = null;
+                    this.checkAutoEndTurn();
+                }, 1000);
                 return;
             }
 
@@ -1246,13 +1303,27 @@ export class Game {
 
     endTurn() {
         if (this.phase === 'SONUÇ') return; // Game Over
-        if (this.botTurnInProgress) return; // Prevent bot turn loops
+        if (this.isTurnTransitioning) return; // Prevent double-execution
         if (this.isCalculatingCombat) return; // Wait for calculation to finish
 
-        // CRITICAL: Clear any pending auto-end timer
+        // Note: We check botTurnInProgress logic below, but we must allow the bot to call endTurn 
+        // IF the bot clears the flag first. If called from button, we respect flag.
+
+        // START TRANSACTION LOCK
+        this.isTurnTransitioning = true;
+
+        // CRITICAL: Clear ALL pending timers
         if (this.autoEndTimer) {
             clearTimeout(this.autoEndTimer);
             this.autoEndTimer = null;
+        }
+        if (this.combatWaitTimer) {
+            clearTimeout(this.combatWaitTimer);
+            this.combatWaitTimer = null;
+        }
+        if (this.botSafetyTimer) {
+            clearTimeout(this.botSafetyTimer);
+            this.botSafetyTimer = null;
         }
 
         // Close market modal if open
@@ -1292,12 +1363,13 @@ export class Game {
                 this.log(`⛓️ ${nextPlayer.name} (Vassal): Sıra pas geçildi.`);
             }
 
-            // CRITICAL FIX: Automatically end vassal's turn to continue to next player
+            // Release lock shortly before triggering next turn to allow recursion
             setTimeout(() => {
-                this.endTurn();
+                this.isTurnTransitioning = false;
+                this.endTurn(); // Recursive call for next player
                 window.renderer.render();
-            }, 1500); // Short delay to show vassal turn notification
-            return; // Exit early to prevent bot check
+            }, 1500);
+            return;
         } else {
             // Independent players get normal actions
             nextPlayer.actionsRemaining = 2;
@@ -1312,15 +1384,19 @@ export class Game {
             }
         }
 
-        // Attack notifications now show immediately after each attack (removed turn-end batch system)
-
         this.log(`${nextPlayer.name} sırası.`);
         this.showGameTip();
         this.showTurnNotification(nextPlayer);
 
+        // RELEASE LOCK after short delay to prevent double-clicks
+        setTimeout(() => {
+            this.isTurnTransitioning = false;
+        }, 500);
+
         // If next player is a bot, execute bot turn automatically
         if (nextPlayer.isBot && window.botAI && !this.botTurnInProgress) {
             this.botTurnInProgress = true;
+            const currentTurnIndex = this.activePlayerIndex; // Capture index
 
             // Disable end turn button during bot turn
             const endTurnBtn = document.getElementById('end-turn-btn');
@@ -1328,14 +1404,26 @@ export class Game {
 
             // Safety timeout - force end if bot takes too long
             const safetyTimeout = setTimeout(() => {
+                // Verify we are still in the same turn before forcing end
+                if (this.activePlayerIndex !== currentTurnIndex) return;
+
                 console.warn('⚠️ Bot timeout - forcing end');
                 this.botTurnInProgress = false;
+                this.isTurnTransitioning = false; // Force unlock
                 if (endTurnBtn) endTurnBtn.disabled = false;
                 if (window.botAI) window.botAI.hideBotThinking();
                 this.endTurn();
             }, 10000);
 
+            // Note: Bot logic must handle safetyTimeout clearing if possible, or just ignore
+            // We can store it to clear it later? 
+            this.botSafetyTimer = safetyTimeout;
+
+            // Trigger Bot Logic with delay
             setTimeout(async () => {
+                // Guard: If turn already changed (e.g. by safety timer), abort
+                if (this.activePlayerIndex !== currentTurnIndex) return;
+
                 try {
                     await window.botAI.executeTurn(nextPlayer);
 
@@ -1346,14 +1434,21 @@ export class Game {
                     await new Promise(resolve => setTimeout(resolve, 800));
 
                     // Clear safety timeout
-                    clearTimeout(safetyTimeout);
+                    if (this.botSafetyTimer) clearTimeout(this.botSafetyTimer);
+                    this.botSafetyTimer = null;
 
                     // CRITICAL: Reset bot flag BEFORE calling endTurn
                     // This allows consecutive bot turns to work properly
                     this.botTurnInProgress = false;
 
+                    // Release transition lock if it was held (though endTurn does it)
+                    this.isTurnTransitioning = false; // Force clear lock for next turn call
+
                     // Re-enable button
                     if (endTurnBtn) endTurnBtn.disabled = false;
+
+                    // Guard again: Ensure turn didn't change while we waited
+                    if (this.activePlayerIndex !== currentTurnIndex) return;
 
                     // End bot turn - this will advance to next player and trigger bot logic if needed
                     this.endTurn();
@@ -1363,8 +1458,9 @@ export class Game {
 
                 } catch (error) {
                     console.error('Bot turn error:', error);
-                    clearTimeout(safetyTimeout);
+                    if (this.botSafetyTimer) clearTimeout(this.botSafetyTimer);
                     this.botTurnInProgress = false;
+                    this.isTurnTransitioning = false;
                     if (endTurnBtn) endTurnBtn.disabled = false;
                     window.renderer.render();
                 }
@@ -1387,26 +1483,72 @@ export class Game {
             document.body.appendChild(notification);
         }
 
+        // Build Turn Report HTML
+        let reportHtml = '';
+        if (player.turnReport) {
+            const r = player.turnReport;
+
+            // Income Section
+            if (r.income > 0) {
+                reportHtml += `<div class="turn-report-item item-gold">💰 +${r.income} Altın</div>`;
+            } else {
+                reportHtml += `<div class="turn-report-item item-gold" style="color: #ef4444;">💰 Gelir Yok</div>`;
+            }
+
+            // Units Section
+            if (r.newUnits.length > 0) {
+                // Count unit types
+                const unitCounts = {};
+                r.newUnits.forEach(u => unitCounts[u] = (unitCounts[u] || 0) + 1);
+                Object.entries(unitCounts).forEach(([name, count]) => {
+                    reportHtml += `<div class="turn-report-item item-unit">⚔️ +${count} ${name} (Kışla)</div>`;
+                });
+            }
+
+            // Population Section
+            if (r.newCivilians > 0) {
+                reportHtml += `<div class="turn-report-item item-pop">👥 +${r.newCivilians} Nüfus</div>`;
+            }
+
+            // Taxes
+            if (r.taxPaid > 0) {
+                reportHtml += `<div class="turn-report-item item-tax-paid">💸 -${r.taxPaid} Vergi Ödendi</div>`;
+            }
+            if (r.taxReceived > 0) {
+                reportHtml += `<div class="turn-report-item item-tax-received">💎 +${r.taxReceived} Vergi Alındı</div>`;
+            }
+
+            // Notes
+            if (r.notes && r.notes.length > 0) {
+                r.notes.forEach(note => {
+                    reportHtml += `<div class="turn-report-item item-note">📝 ${note}</div>`;
+                });
+            }
+        }
+
         // Set notification content with player color
         const playerIcon = player.isBot ? '🤖' : '👑';
         notification.innerHTML = `
             <h2 style="color: ${player.color}; text-shadow: 0 0 20px ${player.color};">
                 ${playerIcon} ${player.name}
             </h2>
-            <p>Sıra Sizde!</p>
+            <div class="turn-notification-subtitle">Sıra Sizde!</div>
+            <div class="turn-report-container">
+                ${reportHtml}
+            </div>
         `;
 
         // Show notification
         notification.style.display = 'block';
         notification.classList.remove('fade-out');
 
-        // Hide after 2 seconds
+        // Hide after 3 seconds (increased form 2s to allow reading)
         setTimeout(() => {
             notification.classList.add('fade-out');
             setTimeout(() => {
                 notification.style.display = 'none';
             }, 300);
-        }, 2000);
+        }, 3000);
     }
 
     distributeIncome() {
@@ -1414,6 +1556,17 @@ export class Game {
         this.log(`TUR ${this.turn} BAŞLADI`);
 
         this.players.forEach(p => {
+            // Initialize Turn Report
+            p.turnReport = {
+                income: 0,
+                incomeBreakdown: [],
+                newUnits: [],
+                newCivilians: 0,
+                taxPaid: 0,
+                taxReceived: 0,
+                notes: []
+            };
+
             // Reset market refreshes at start of turn
             p.marketRefreshes = 0;
 
@@ -1430,7 +1583,10 @@ export class Game {
 
             // 2. Vassal Taxes (Master gets +1 from each Vassal)
             const vassals = this.players.filter(v => v.masterId === p.id);
-            income += vassals.length;
+            const vassalIncome = vassals.length;
+            income += vassalIncome;
+
+            if (vassalIncome > 0) p.turnReport.taxReceived = vassalIncome;
 
             // 2.5 Economic Balance: If gold is >= 50% of cap, reduce income by 50%
             const goldCap = this.getGoldCap();
@@ -1438,14 +1594,14 @@ export class Game {
                 const originalIncome = income;
                 income = Math.max(1, Math.floor(income / 2));
                 this.log(`📉 ${p.name} zenginlik vergisi: Gelir %50 azaldı. (${originalIncome} → ${income})`);
+                p.turnReport.notes.push("Zenginlik Vergisi (-%50 Gelir)");
             }
-
-            // NOTE: Alliance bonus removed - no passive gold from alliances
 
             // 3. Pay Tax (If Vassal, give 1 to Master)
             // This continues even when gold cap is near limit
             if (p.isVassal && p.gold > 0) {
                 p.gold -= 1;
+                p.turnReport.taxPaid = 1;
                 const master = this.players.find(m => m.id === p.masterId);
                 if (master) {
                     master.gold += 1;
@@ -1464,6 +1620,7 @@ export class Game {
                 // Stop passive income when 75% of total cap is reached
                 this.log(`⚠️ Altın tavanına yaklaşıldı! (${totalGoldEarned}/${totalGoldCap}) Pasif gelir kesildi.`);
                 income = 0;
+                p.turnReport.notes.push("Global Altın Limiti (Gelir Yok)");
             } else {
                 // 5. Check Per-Player Gold Cap for capping income
                 const currentGold = p.gold;
@@ -1472,14 +1629,17 @@ export class Game {
                 if (availableGold <= 0) {
                     this.log(`🚫 ${p.name} altın limitinde! Gelir alamadı. (${currentGold}/${goldCapPerPlayer})`);
                     income = 0;
+                    p.turnReport.notes.push("Kişisel Altın Limiti (Gelir Yok)");
                 } else if (income > availableGold) {
                     income = availableGold;
                     this.log(`⚠️ ${p.name} kısmi gelir aldı: ${income} Altın (Limit: ${goldCapPerPlayer})`);
+                    p.turnReport.notes.push("Limit Nedeniyle Kısıtlı Gelir");
                 }
             }
 
             p.gold += income;
             p.totalGoldEarned += income; // Track total earned for statistics
+            p.turnReport.income = income;
 
             // 5. Barracks Bonus (Each Kışla spawns 1 soldier in garrison)
             p.grid.forEach((cell, idx) => {
@@ -1500,6 +1660,7 @@ export class Game {
                         const randomSoldier = soldierTypes[Math.floor(Math.random() * soldierTypes.length)];
                         cell.garrison.push({ ...randomSoldier });
                         this.log(`🏰 ${p.name}, Kışla'ya ${randomSoldier.name} eklendi! (Garnizon: ${cell.garrison.length}/15)`);
+                        p.turnReport.newUnits.push(randomSoldier.name);
                     } else {
                         this.log(`⚠️ ${p.name}'in Kışla'sı dolu! (15/15)`);
                     }
@@ -1517,6 +1678,7 @@ export class Game {
                 if (hasFarm && meclis && meclis.garrison && meclis.garrison.length < 3) {
                     meclis.garrison.push({ name: 'Sivil', type: 'Nüfus', power: 0 });
                     this.log(`🌾 ${p.name}, Çiftlik 1 sivil üretti! (Meclis: ${meclis.garrison.length}/3)`);
+                    p.turnReport.newCivilians = 1;
                 } else if (hasFarm) {
                     this.log(`ℹ️ ${p.name} nüfusu tam, artış olmadı.`);
                 }
@@ -1538,18 +1700,18 @@ export class Game {
 
                     for (let i = 0; i < missingCivils; i++) {
                         // Try to use DP first (1 DP per civilian)
-                        if (p.dp > 1) {
+                        if (p.dp >= 1) {
                             p.dp -= 1;
-                            usedDP++;
                             meclis.garrison.push({ name: 'Sivil', type: 'Nüfus', power: 0 });
                             restored++;
+                            usedDP++;
                         }
-                        // If no DP, use gold (2 gold per civilian)
+                        // Then try Gold (2 Gold per civilian)
                         else if (p.gold >= 2) {
                             p.gold -= 2;
-                            usedGold++;
                             meclis.garrison.push({ name: 'Sivil', type: 'Nüfus', power: 0 });
                             restored++;
+                            usedGold += 2;
                         }
                         // Cannot afford restoration
                         else {
@@ -1561,7 +1723,7 @@ export class Game {
                     if (restored > 0) {
                         let costMsg = '';
                         if (usedDP > 0 && usedGold > 0) {
-                            costMsg = `(-${usedDP} DP, -${usedGold * 2} Altın)`;
+                            costMsg = `(-${usedDP} DP, -${usedGold} Altın)`;
                         } else if (usedDP > 0) {
                             costMsg = `(-${usedDP} DP)`;
                         } else if (usedGold > 0) {
@@ -1654,6 +1816,120 @@ export class Game {
                 this.log(`♻️ ${returned} asker havuza eklendi. Pazarda satılacak.`);
             }
         }
+    }
+
+    // --- BARRACKS DESTRUCTION & MERCENARY SYSTEM ---
+
+    handleBarracksDestruction(attacker, defender, garrison) {
+        if (!garrison || garrison.length === 0) return;
+
+        const totalSoldiers = garrison.length;
+        const halfCount = Math.floor(totalSoldiers / 2);
+
+        // Attacker gets half
+        const attackerShare = garrison.slice(0, halfCount);
+        // User said "50% attacker, 50% defender". Let's give remainder to defender.
+        const defenderShare = garrison.slice(halfCount);
+
+        this.log(`⚖️ Asker Paylaşımı: ${attacker.name} (${attackerShare.length}), ${defender.name} (${defenderShare.length})`);
+
+        // Distribute or Sell
+        if (attackerShare.length > 0) this.distributeOrSellSoldiers(attacker, attackerShare, 'attacker');
+        if (defenderShare.length > 0) this.distributeOrSellSoldiers(defender, defenderShare, 'defender');
+    }
+
+    distributeOrSellSoldiers(player, soldiers, role) {
+        // 1. Try to fill existing Barracks
+        const barracksList = player.grid.filter(c => c && c.type === 'Kışla');
+        const remainingSoldiers = [];
+
+        for (const soldier of soldiers) {
+            let placed = false;
+            for (const barracks of barracksList) {
+                if (!barracks.garrison) barracks.garrison = [];
+                if (barracks.garrison.length < 15) {
+                    barracks.garrison.push(soldier);
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                remainingSoldiers.push(soldier);
+            }
+        }
+
+        const placedCount = soldiers.length - remainingSoldiers.length;
+        if (placedCount > 0) {
+            const verb = role === 'attacker' ? 'katıldı' : 'sığındı';
+            this.log(`➡️ ${placedCount} asker ${player.name} ordusuna ${verb}.`);
+        }
+
+        // 2. Sell Overflow to Market as Mercenary Card
+        if (remainingSoldiers.length > 0) {
+            const count = remainingSoldiers.length;
+            const cost = this.calculateMercenaryCost(count);
+
+            const mercenaryCard = {
+                id: 'merc_' + Date.now() + '_' + Math.random(),
+                type: 'Paralı Asker',
+                name: `Paralı Asker (${count})`,
+                count: count,
+                soldiers: remainingSoldiers,
+                cost: cost,
+                description: `${count} adet tecrübeli asker.`
+            };
+
+            if (!this.openMarket) this.openMarket = [];
+            this.openMarket.push(mercenaryCard);
+            this.log(`💰 ${count} asker sığacak yer bulamadı ve Paralı Asker olarak pazara düştü! (${cost} Altın)`);
+        }
+    }
+
+    calculateMercenaryCost(count) {
+        if (count <= 10) return 1;
+        if (count <= 20) return 2;
+        return 3; // 21-30+
+    }
+
+    playMercenaryCard(handIndex) {
+        const player = this.getActivePlayer();
+        if (player.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
+
+        const card = player.hand[handIndex];
+        if (!card || card.type !== 'Paralı Asker') return { success: false, msg: "Geçersiz kart!" };
+
+        // Try to place soldiers
+        const soldiers = card.soldiers;
+        const barracksList = player.grid.filter(c => c && c.type === 'Kışla');
+        let placedCount = 0;
+
+        for (const soldier of soldiers) {
+            for (const barracks of barracksList) {
+                if (!barracks.garrison) barracks.garrison = [];
+                if (barracks.garrison.length < 15) {
+                    barracks.garrison.push(soldier);
+                    placedCount++;
+                    break;
+                }
+            }
+        }
+
+        if (placedCount === 0) {
+            return { success: false, msg: "Kışlalarda hiç yer yok!" };
+        }
+
+        // Action cost
+        player.actionsRemaining -= 1;
+        player.hand.splice(handIndex, 1);
+
+        this.log(`⚔️ ${player.name}, ${placedCount} paralı askeri ordusuna kattı!`);
+
+        if (placedCount < soldiers.length) {
+            this.log(`⚠️ ${soldiers.length - placedCount} asker yer bulamadığı için dağıldı.`);
+        }
+
+        this.checkAutoEndTurn();
+        return { success: true };
     }
 
     // DIPLOMACY
@@ -1783,6 +2059,59 @@ export class Game {
                         }
                         break;
 
+                    case 'terror_joker': // Terör Jokeri
+                        // Requirement: 10 DP
+                        if (player.dp < 10) {
+                            this.log(`❌ TERÖR JOKERİ BAŞARISIZ! ${player.name} yeterli DP'ye sahip değil! (${player.dp}/10)`);
+                            player.hand.push(card);
+                            player.actionsRemaining += 1;
+                            // No DP cost if failed requirement? Or penalty? Usually just return card.
+                            return { success: false, msg: `En az 10 DP gerekli! (Mevcut: ${player.dp})` };
+                        }
+
+                        // Usage Cost: 2 DP
+                        player.dp = Math.max(0, player.dp - 2);
+
+                        // Target validation
+                        const terrorTarget = target.grid.map((cell, idx) => ({ cell, idx })).filter(item => item.cell && !item.cell.isUnit); // Buildings only
+
+                        // Specific target logic needed? 
+                        // Current `playDiplomacyCard` doesn't pass specific slot index, only player ID.
+                        // So we need to select a random building OR ask user to target a slot.
+                        // Since `playDiplomacyCard` structure assumes "Target Player", we will pick a RANDOM building for now or implementing targeting is complex.
+                        // Wait, `attackSlot` uses `targetSlotIndex`. `playDiplomacyCard` does NOT interact with grid clicks in the same way.
+                        // Renderer handles 'Diplomacy' with `needsTarget` by entering a mode?
+                        // Line 628 in renderer.js: `this.game.pendingDiplomacyCard = { cardIndex: index, card: card };`
+                        // This allows clicking a player card. It DOES NOT allow clicking a grid slot.
+
+                        // PROPOSAL: Terror Joker destroys a RANDOM building of the target player (excluding Meclis).
+                        // This fits the "Terror" theme (unpredictable/chaos) and existing UI constraints.
+
+                        const destructibleBuildings = target.grid
+                            .map((cell, idx) => ({ cell, idx }))
+                            .filter(item => item.cell && !item.cell.isUnit && item.cell.type !== 'Meclis');
+
+                        if (destructibleBuildings.length > 0) {
+                            const randomBuilding = destructibleBuildings[Math.floor(Math.random() * destructibleBuildings.length)];
+                            const slotIdx = randomBuilding.idx;
+                            const bName = randomBuilding.cell.type;
+                            const bGarrison = randomBuilding.cell.garrison ? [...randomBuilding.cell.garrison] : [];
+
+                            // Destroy
+                            target.grid[slotIdx] = null;
+                            this.log(`💣 TERÖR JOKERİ! ${player.name}, ${target.name}'in ${bName} binasını havaya uçurdu! (-2 DP)`);
+
+                            // If Kışla, trigger salvage
+                            if (bName === 'Kışla') {
+                                this.log(`🏚️ Yıkılan Kışla'dan askerler kaçışıyor...`);
+                                this.handleBarracksDestruction(player, target, bGarrison);
+                            }
+                        } else {
+                            this.log(`⚠️ TERÖR JOKERİ ETKİSİZ! ${target.name}'in yıkılacak binası yok!`);
+                            // Refund? No, card used.
+                        }
+                        break;
+
                     case 'white_flag': // Beyaz Bayrak - Peace protection
                         const duration = card.duration || 1;
                         player.whiteFlagTurns = duration;
@@ -1859,6 +2188,9 @@ export class Game {
                             this.log(`${player.name}: -6 DP, -10 Altın | ${target.name}: +2 DP`);
                         }
                         break;
+
+                    default:
+                        this.log(`⚠️ Bilinmeyen Diplomasi Kartı: ${card.effect}`);
                 }
             }
         }
@@ -1868,7 +2200,7 @@ export class Game {
     }
 
     // TECHNOLOGY
-    playTechnologyCard(handIndex) {
+    playTechnologyCard(handIndex, techType = null) {
         const player = this.getActivePlayer();
 
         if (player.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
@@ -1891,7 +2223,7 @@ export class Game {
 
         // Special handling for Joker card
         if (card.isJoker) {
-            // Ask player which technology to upgrade
+            // Options
             const techOptions = [
                 { type: 'military', name: 'Silah (Askeri Güç)', currentLevel: player.technologies.military },
                 { type: 'defense', name: 'Savunma (Bina HP)', currentLevel: player.technologies.defense },
@@ -1905,23 +2237,24 @@ export class Game {
                 return { success: false, msg: "Tüm teknolojilerin maksimum seviyede!" };
             }
 
-            // Build prompt message
-            let promptMsg = "Joker kartı ile hangi teknolojiyi geliştirmek istiyorsun?\n\n";
-            availableTechs.forEach((tech, idx) => {
-                promptMsg += `${idx + 1}. ${tech.name} (Şu an: Lv${tech.currentLevel} → Lv${tech.currentLevel + 1})\n`;
-            });
-            promptMsg += "\nNumara seç (1-" + availableTechs.length + "):";
-
-            const choice = window.prompt(promptMsg);
-            const choiceNum = parseInt(choice);
-
-            if (!choiceNum || choiceNum < 1 || choiceNum > availableTechs.length) {
-                return { success: false, msg: "Geçersiz seçim!" };
+            // If techType is null, UI needs to ask user
+            if (!techType) {
+                return {
+                    success: false,
+                    msg: "JOKER_SELECTION_NEEDED",
+                    availableTechs: availableTechs,
+                    cardIndex: handIndex
+                };
             }
 
-            const selectedTech = availableTechs[choiceNum - 1];
-            targetTechType = selectedTech.type;
-            targetLevel = selectedTech.currentLevel + 1;
+            // Verify selection
+            const selected = availableTechs.find(t => t.type === techType);
+            if (!selected) {
+                return { success: false, msg: "Geçersiz teknoloji seçimi!" };
+            }
+
+            targetTechType = selected.type;
+            targetLevel = selected.currentLevel + 1;
         } else {
             // Regular tech card - check if player already has this level or higher
             const currentLevel = player.technologies[card.techType];

@@ -55,20 +55,21 @@ export class CombatCalculator {
             ">
                 <button id="combat-skip-btn" style="
                     position: absolute;
-                    top: 10px;
-                    right: 10px;
-                    background: rgba(59, 130, 246, 0.3);
-                    border: 2px solid #3b82f6;
+                    top: 5px;
+                    right: 5px;
+                    background: rgba(59, 130, 246, 0.4);
+                    border: 1px solid #3b82f6;
                     color: white;
-                    padding: 8px 16px;
-                    border-radius: 6px;
+                    padding: 4px 10px;
+                    border-radius: 4px;
                     cursor: pointer;
-                    font-size: 0.85rem;
-                    font-weight: bold;
+                    font-size: 0.75rem;
+                    font-weight: normal;
                     transition: all 0.2s;
                     font-family: 'Inter', sans-serif;
+                    z-index: 10;
                 ">
-                    ⏩ SONUCU GÖSTER
+                    ⏩ Sonucu Göster
                 </button>
                 
                 <div class="combat-header" style="
