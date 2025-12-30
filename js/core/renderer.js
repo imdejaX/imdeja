@@ -211,6 +211,7 @@ export class Renderer {
                         <span style="font-size: 0.75rem; color: #fbbf24;">
                             ⚔️${p.technologies.military}
                             🛡️${p.technologies.defense}
+                            📈${p.technologies.commerce}
                         </span>
                     </span>
                 </div>
@@ -242,7 +243,20 @@ export class Renderer {
                 ${p.militaryBoost && p.militaryBoost > 0 ? `<div class="military-boost-badge">⚔️ Askeri Bonus: +${p.militaryBoost}</div>` : ''}
                 
                 <div class="kingdom-grid ${p.whiteFlagTurns > 0 ? 'white-flag-active' : ''}">
-                    ${p.grid.map((cell, idx) => `
+                    ${p.grid.map((cell, idx) => {
+                    // Calculate Effective Defense for Display
+                    let effectivePower = cell ? (cell.power || 0) : 0;
+                    if (cell && effectivePower > 0) {
+                        // Apply Tech
+                        const defenseMultipliers = [1, 1.2, 1.5, 2, 2.5];
+                        effectivePower = Math.floor(effectivePower * defenseMultipliers[p.technologies.defense]);
+
+                        // Apply Wall Bonus
+                        const hasWall = p.grid.some(c => c && c.type === 'Duvar');
+                        if (hasWall) effectivePower += 5;
+                    }
+
+                    return `
                         <div class="grid-cell 
                             ${cell?.type === 'Meclis' ? 'meclis' : ''} 
                             ${cell ? 'occupied' : 'empty'}" 
@@ -257,14 +271,14 @@ export class Renderer {
                                     </div>
                                     <div class="cell-stats">
                                         <span class="hp">❤️${cell.hp || '-'}</span>
-                                        ${cell.power ? `<span class="power">🛡️${cell.power}</span>` : ''}
+                                        ${cell.power ? `<span class="power" title="Efektif Savunma (Taban + Teknoloji + Duvar)">🛡️${effectivePower}</span>` : ''}
                                         ${cell.garrison && (cell.type === 'Kışla' || cell.type === 'Meclis') ? `<span class="garrison">👥${cell.garrison.length}</span>` : ''}
                                     </div>
                                 </div>
                             ` : `<span class="slot-empty">□</span>`}
                             
                         </div>
-                    `).join('')}
+                    `}).join('')}
                 </div>
                 
                 <div class="resources">
@@ -272,11 +286,8 @@ export class Renderer {
                 <span class="res-item" title="Nüfus (Meclis Sivilleri + Kışla Askerleri)">👥 ${(() => {
                     const barracksCount = p.grid.filter(c => c && c.type === 'Kışla').length;
 
-                    // Capacity: Meclis (3) + 15 per Barracks
-                    // NOTE: Food Tech multiplier is applied to this total in the new logic? 
-                    // User request: "3 meclis + 15 kışla = 18". Assuming tech still multiplies total or just base?
-                    // User didn't specify tech interaction, so for now we stick to strict 3 + 15*N
-                    let capacity = 3 + (barracksCount * 15);
+                    // Capacity: Meclis (3) + 20 per Barracks (Updated standard)
+                    let capacity = 3 + (barracksCount * 20);
 
                     // Apply Food Tech Multiplier if desired (Optional, currently disabled for strict adherence)
                     // const foodTech = p.technologies.food;
@@ -509,9 +520,19 @@ export class Renderer {
 
     renderMarket() {
         this.containers.market.innerHTML = '';
+        this.containers.market.className = ''; // Remove 'market-grid' to allow block layout
+
+        // Create separate grids
+        const standardGrid = document.createElement('div');
+        standardGrid.className = 'market-grid';
+        standardGrid.style.justifyContent = 'center';
+
+        const mercenaryGrid = document.createElement('div');
+        mercenaryGrid.className = 'market-grid';
+        mercenaryGrid.style.justifyContent = 'center';
 
         // Sort cards in specified order: Bina, Asker, Diplomasi, Teknoloji
-        const typeOrder = { 'Bina': 1, 'Asker': 2, 'Diplomasi': 3, 'Teknoloji': 4 };
+        const typeOrder = { 'Bina': 1, 'Asker': 2, 'Diplomasi': 3, 'Teknoloji': 4, 'Paralı Asker': 5 };
         const sortedMarket = [...this.game.openMarket].sort((a, b) => {
             // Primary Sort: Type
             const typeDiff = (typeOrder[a.type] || 99) - (typeOrder[b.type] || 99);
@@ -585,24 +606,20 @@ export class Renderer {
                 el.innerHTML = `
                     <div class="card-icon">⚔️💰</div>
                     <div class="card-name">${card.name}</div>
-                    <div class="card-cost">🟡 ${card.cost} Altın</div>
+                    <div class="card-cost">${card.cost} Altın</div>
                     <div class="card-desc" style="font-size: 0.7rem; color: #d8b4fe;">${card.description}</div>
                     ${actionsRemaining > 0 ? (canAfford ? '<div class="buy-hint">🛒</div>' : '<div class="buy-hint" style="color:red">❌</div>') : '<div class="buy-hint" style="color:gray">🔒</div>'}
                 `;
             } else {
                 // Standard Card
-                let typeIcon = '';
-                if (card.type === 'Bina') typeIcon = '🏭'; // Factory/Building
-                else if (card.type === 'Asker') typeIcon = '⚔️'; // Swords
-                else if (card.type === 'Diplomasi') typeIcon = '🎭'; // Masks
-                else if (card.type === 'Teknoloji') typeIcon = '🔬'; // Microscope
+                const isPropaganda = card.name === 'Propaganda';
+                // Inline style override to guarantee fit and position
+                const propStyle = isPropaganda ? 'font-size: 0.72rem !important; letter-spacing: -0.5px; word-break: break-all; line-height: 1.1; margin-top: 12px;' : '';
 
                 el.innerHTML = `
-                    <div class="card-type-icon">${typeIcon}</div>
-                    <div class="card-name">${card.name}</div>
-                    <div class="card-cost">🟡 ${card.cost} Altın</div>
-                    ${card.type === 'Teknoloji' ? `<div class="card-level">Lv${card.level}</div>` : ''}
-                    ${card.type === 'Diplomasi' ? `<div class="card-dp">DP: ${card.dp}</div>` : ''}
+                    <div class="card-name ${isPropaganda ? 'propaganda-text' : ''}" style="${propStyle}">${card.name}</div>
+                    <div class="card-cost">${card.cost} Altın</div>
+                    ${card.type === 'Teknoloji' && !card.isJoker ? `<div class="card-level">Lv${card.level}</div>` : ''}
                     ${actionsRemaining > 0 ? (canAfford ? '<div class="buy-hint">🛒</div>' : '<div class="buy-hint" style="color:red">❌</div>') : '<div class="buy-hint" style="color:gray">🔒</div>'}
                 `;
             }
@@ -615,8 +632,26 @@ export class Renderer {
                 this.render();
             });
 
-            this.containers.market.appendChild(el);
+            // Append to appropriate grid
+            if (card.type === 'Paralı Asker' || isPoolSoldier) {
+                mercenaryGrid.appendChild(el);
+            } else {
+                standardGrid.appendChild(el);
+            }
         });
+
+        // Append Standard Grid
+        this.containers.market.appendChild(standardGrid);
+
+        // Append Mercenary Grid if has items
+        if (mercenaryGrid.children.length > 0) {
+            const separator = document.createElement('div');
+            separator.style.cssText = 'width: 100%; text-align: center; margin: 20px 0 10px; border-top: 1px solid rgba(251, 191, 36, 0.3); padding-top: 15px;';
+            separator.innerHTML = '<h4 style="color: #fbbf24; font-family: Cinzel, serif; margin: 0; text-shadow: 0 0 5px rgba(251, 191, 36, 0.3);">⚔️ Paralı Askerler</h4>';
+
+            this.containers.market.appendChild(separator);
+            this.containers.market.appendChild(mercenaryGrid);
+        }
     }
 
     renderHand() {

@@ -1083,15 +1083,18 @@ body::before {
     }
 
     .card {
-        width: 110px;
-        height: 160px;
+        width: 150px;
+        /* Increased to 150px for guaranteed fit */
+        height: 220px;
+        /* Increased to 220px to definitively fix overflow */
         background: linear-gradient(to bottom, #ffffff, #f9fafb);
         color: #111827;
         border-radius: 12px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 8px;
+        padding: 4px 2px;
+        /* Reduced padding to 4px horizontal */
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         cursor: pointer;
         border: 1px solid #e5e7eb;
@@ -1099,6 +1102,52 @@ body::before {
         user-select: none;
         position: relative;
     }
+
+    /* CARD TYPE THEMES (Pastel/Elegant) */
+
+    /* Buildings: Soft Blue/Slate (Structure/Trust) */
+    .card.card-building {
+        background: linear-gradient(to bottom, #f0f9ff, #e0f2fe);
+        border-color: #bae6fd;
+    }
+
+    .card.card-building .card-name {
+        color: #0369a1;
+    }
+
+    /* Units: Soft Rose/Red (Action/Power) */
+    .card.card-unit {
+        background: linear-gradient(to bottom, #fff1f2, #ffe4e6);
+        border-color: #fecdd3;
+    }
+
+    .card.card-unit .card-name {
+        color: #be123c;
+    }
+
+    /* Diplomacy: Soft Purple (Mystery/Strategy) - Already defaultish but explicit here */
+    .card.card-diplomacy {
+        background: linear-gradient(to bottom, #faf5ff, #f3e8ff);
+        border-color: #e9d5ff;
+    }
+
+    .card.card-diplomacy .card-name {
+        color: #7e22ce;
+    }
+
+    /* Technology: Soft Emerald/Teal (Growth) */
+    .card.card-tech {
+        background: linear-gradient(to bottom, #eff6ff, #dbeafe);
+        /* Keeping slightly blue-ish or change to green? Let's go Slate/Gray for "Science" or Keep default */
+        /* Let's use a very light neutral or Cyan */
+        background: linear-gradient(to bottom, #ecfeff, #cffafe);
+        border-color: #a5f3fc;
+    }
+
+    .card.card-tech .card-name {
+        color: #0e7490;
+    }
+
 
     .card:hover {
         transform: translateY(-5px);
@@ -1113,22 +1162,24 @@ body::before {
     }
 
     .card-name {
-        font-weight: 700;
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
         text-align: center;
-        font-size: 0.35rem;
-        line-height: 1.1;
-        color: #111827;
-        margin: 1px 0;
+        font-size: 0.5rem;
+        /* Reduced to 0.5rem for better fit */
+        line-height: 1.2;
+        color: #374151;
+        margin: 2px 0;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
-        min-height: 2em;
-        /* Adjusted height */
+        min-height: 2.4em;
         display: flex;
         align-items: center;
         justify-content: center;
         width: 100%;
+        letter-spacing: -0.01em;
     }
 
     .card-cost {
@@ -1813,17 +1864,37 @@ body::before {
         padding: 3px;
     }
 
-    .card-title {
-        font-size: 0.55rem;
-        line-height: 1;
+    .card-name {
+        font-size: 0.7rem;
+        /* Reduced for better fit */
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 2px;
+        line-height: 1.1;
+        white-space: normal;
+        /* Allow wrap */
+        overflow-wrap: anywhere;
+        /* Force break anywhere if needed */
+        word-break: break-word;
+        /* Ensure long words break */
+        max-width: 100%;
     }
 
     .card-cost {
-        font-size: 0.6rem;
+        font-size: 0.7rem;
+        color: #d97706;
+        font-weight: 600;
+        margin-bottom: 2px;
     }
 
-    .card-type {
-        font-size: 0.55rem;
+    .card-desc {
+        display: none;
+    }
+
+    /* Specific adjustments for longer names like Propaganda */
+    .market-card .card-name {
+        font-size: 0.6rem;
+        /* Slightly smaller for market */
     }
 
     .hand-row {

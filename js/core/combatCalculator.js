@@ -128,7 +128,8 @@ export class CombatCalculator {
             }
         ];
 
-        let skipped = false;
+        // Skip animation if requested (e.g. for bots)
+        let skipped = combatData.skipAnimation || false;
 
         // Skip button functionality
         skipBtn.addEventListener('click', () => {

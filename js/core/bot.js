@@ -37,11 +37,12 @@ export class BotAI {
             await this.delay(600);
             await this.performAttacks(player);
 
-            this.hideBotThinking();
             console.log(`✅ Bot ${player.name} finished turn`);
         } catch (error) {
             console.error(`❌ Bot ${player.name} error:`, error);
+        } finally {
             this.hideBotThinking();
+            // Important: We rely on Game execution flow to handle endTurn, but we are done here.
         }
     }
 
@@ -138,8 +139,12 @@ export class BotAI {
                     }
                 }
             }
+
+            // Clear selection after playing cards
+            this.game.selectedCardIndex = null;
         } catch (error) {
             console.error('playDiplomacyCards error:', error);
+            this.game.selectedCardIndex = null;
         }
     }
 

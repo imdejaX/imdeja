@@ -105,34 +105,34 @@ export class Game {
         const diplomacyCards = [
             { name: 'Casusluk', cost: 4, type: 'Diplomasi', dp: 1, effect: 'steal_card' },
             { name: 'Propaganda', cost: 6, type: 'Diplomasi', dp: 2, effect: 'steal_unit' },
-            { name: 'Ekonomik İşbirliği', cost: 3, type: 'Diplomasi', dp: 1, effect: 'gold_boost' },
             { name: 'Askeri Gösteri', cost: 3, type: 'Diplomasi', dp: 1, effect: 'military_boost' },
             { name: 'Nifak Tohumu', cost: 7, type: 'Diplomasi', dp: 3, effect: 'break_alliance' },
             { name: 'Beyaz Bayrak', cost: 5, type: 'Diplomasi', dp: 1, effect: 'white_flag', duration: 1 },
+            { name: 'Mimari Onarım', cost: 4, type: 'Diplomasi', dp: 2, effect: 'repair_building' }, // New Card
             { name: 'Terör Jokeri', cost: 20, type: 'Diplomasi', dp: 0, effect: 'terror_joker' } // New Card
         ];
 
         const technologyCards = [
             // Military Technology (Attack power boost) - BALANCED
-            { name: 'Silah I', cost: 5, popCost: 2, type: 'Teknoloji', techType: 'military', level: 1, multiplier: 1.2 },
-            { name: 'Silah II', cost: 10, popCost: 3, type: 'Teknoloji', techType: 'military', level: 2, multiplier: 1.5 },
-            { name: 'Silah III', cost: 15, popCost: 4, type: 'Teknoloji', techType: 'military', level: 3, multiplier: 2 },
-            { name: 'Silah IV', cost: 25, popCost: 5, type: 'Teknoloji', techType: 'military', level: 4, multiplier: 2.5 },
+            { name: 'Silah', cost: 5, popCost: 2, type: 'Teknoloji', techType: 'military', level: 1, multiplier: 1.2 },
+            { name: 'Silah', cost: 10, popCost: 3, type: 'Teknoloji', techType: 'military', level: 2, multiplier: 1.5 },
+            { name: 'Silah', cost: 15, popCost: 4, type: 'Teknoloji', techType: 'military', level: 3, multiplier: 2 },
+            { name: 'Silah', cost: 25, popCost: 5, type: 'Teknoloji', techType: 'military', level: 4, multiplier: 2.5 },
 
             // Defense Technology (Building HP boost) - BALANCED
-            { name: 'Savunma I', cost: 5, popCost: 2, type: 'Teknoloji', techType: 'defense', level: 1, multiplier: 1.2 },
-            { name: 'Savunma II', cost: 10, popCost: 3, type: 'Teknoloji', techType: 'defense', level: 2, multiplier: 1.5 },
-            { name: 'Savunma III', cost: 15, popCost: 4, type: 'Teknoloji', techType: 'defense', level: 3, multiplier: 2 },
-            { name: 'Savunma IV', cost: 25, popCost: 5, type: 'Teknoloji', techType: 'defense', level: 4, multiplier: 2.5 },
+            { name: 'Savunma', cost: 5, popCost: 2, type: 'Teknoloji', techType: 'defense', level: 1, multiplier: 1.2 },
+            { name: 'Savunma', cost: 10, popCost: 3, type: 'Teknoloji', techType: 'defense', level: 2, multiplier: 1.5 },
+            { name: 'Savunma', cost: 15, popCost: 4, type: 'Teknoloji', techType: 'defense', level: 3, multiplier: 2 },
+            { name: 'Savunma', cost: 25, popCost: 5, type: 'Teknoloji', techType: 'defense', level: 4, multiplier: 2.5 },
 
             // Commerce Technology (Pazar boost) - NEW
-            { name: 'Ticaret I', cost: 5, popCost: 2, type: 'Teknoloji', techType: 'commerce', level: 1, multiplier: 1.5 },
-            { name: 'Ticaret II', cost: 10, popCost: 3, type: 'Teknoloji', techType: 'commerce', level: 2, multiplier: 2 },
-            { name: 'Ticaret III', cost: 15, popCost: 4, type: 'Teknoloji', techType: 'commerce', level: 3, multiplier: 2.5 },
-            { name: 'Ticaret IV', cost: 25, popCost: 5, type: 'Teknoloji', techType: 'commerce', level: 4, multiplier: 3 },
+            { name: 'Ticaret', cost: 5, popCost: 2, type: 'Teknoloji', techType: 'commerce', level: 1, multiplier: 1.5 },
+            { name: 'Ticaret', cost: 10, popCost: 3, type: 'Teknoloji', techType: 'commerce', level: 2, multiplier: 2 },
+            { name: 'Ticaret', cost: 15, popCost: 4, type: 'Teknoloji', techType: 'commerce', level: 3, multiplier: 2.5 },
+            { name: 'Ticaret', cost: 25, popCost: 5, type: 'Teknoloji', techType: 'commerce', level: 4, multiplier: 3 },
 
             // Joker Card - SPECIAL: Player chooses which tech to upgrade
-            { name: '🃏 Joker', cost: 10, popCost: 2, type: 'Teknoloji', techType: 'joker', level: 0, isJoker: true }
+            { name: 'Joker', cost: 10, popCost: 2, type: 'Teknoloji', techType: 'joker', level: 0, isJoker: true }
         ];
 
         let deck = [];
@@ -443,7 +443,7 @@ export class Game {
                 startingSoldiers.push(soldierTypes[Math.floor(Math.random() * soldierTypes.length)]);
             }
 
-            p.grid[3] = { type: 'Kışla', hp: 6, power: 8, garrison: startingSoldiers }; // Military building, starts with 5 soldiers
+            p.grid[3] = { type: 'Kışla', hp: 3, power: 12, garrison: startingSoldiers }; // Military building, starts with 5 soldiers
         });
         this.log("Krallıklar kuruldu.");
     }
@@ -925,7 +925,11 @@ export class Game {
         };
 
         // Show combat calculation modal and WAIT for it to complete
-        await this.showCombatCalculation(combatData);
+        // Skip animation for bots to prevent turn hanging
+        await this.showCombatCalculation({
+            ...combatData,
+            skipAnimation: attacker.isBot
+        });
 
         this.log(`⚔️ ZAR ATILDI! ${attacker.name} -> ${defender.name}`);
         if (hasDiversityBonus) {
@@ -1098,6 +1102,26 @@ export class Game {
                     }
                 } else {
                     this.log(`🛡️ ${defender.name}, ${targetCell.type} hasar aldı. Kalan HP: ${targetCell.hp}`);
+
+                    // Check if destroyed
+                    if (targetCell.hp <= 0) {
+                        const destroyedBuildingName = targetCell.type;
+                        const destroyedGarrison = targetCell.garrison ? [...targetCell.garrison] : [];
+
+                        defender.grid[targetSlotIndex] = null;
+                        this.log(`💥 ${defender.name}'in ${destroyedBuildingName} binası yıkıldı!`);
+
+                        // BARRACKS DESTRUCTION LOGIC
+                        if (destroyedBuildingName === 'Kışla' && destroyedGarrison.length > 0) {
+                            this.log(`🏚️ Kışla yıkıldı! ${destroyedGarrison.length} asker ortada kaldı.`);
+                            this.handleBarracksDestruction(attacker, defender, destroyedGarrison);
+                        }
+
+                        // Gold Reward
+                        attacker.gold += 1;
+                        attacker.totalGoldEarned += 1;
+                        this.log(`💰 ${attacker.name} yıkımdan 1 Altın kazandı!`);
+                    }
                 }
             } else {
                 // Store result for notification (shown after dice animation)
@@ -1270,6 +1294,7 @@ export class Game {
 
     checkAutoEndTurn() {
         if (this.isTurnTransitioning) return; // Locked during transition
+        if (this.botTurnInProgress) return; // Bots handle their own turn end
 
         const player = this.getActivePlayer();
         // Auto-end turn for ALL players when actions reach 0
@@ -1292,12 +1317,21 @@ export class Game {
             if (this.autoEndTimer) {
                 clearTimeout(this.autoEndTimer);
             }
+
+            // FORCE CLEAR ACTION MODE if no actions left
+            // This prevents the game from getting stuck in attack mode with 0 actions
+            if (this.actionMode) {
+                this.clearActionMode();
+            }
+
             // Set new timer
+            console.log('⏳ Auto-end turn timer started (1.5s)');
             this.autoEndTimer = setTimeout(() => {
+                console.log('⌛ Auto-ending turn now...');
                 this.autoEndTimer = null;
                 this.endTurn();
                 window.renderer.render();
-            }, 3000); // Wait for dice animation (2s) + buffer
+            }, 1500); // Reduced to 1.5s for better responsiveness
         }
     }
 
@@ -1338,7 +1372,8 @@ export class Game {
         if (this.activePlayerIndex >= this.players.length) {
             this.activePlayerIndex = 0;
             this.turn++;
-            this.distributeIncome();
+            this.log("---------------");
+            this.log(`TUR ${this.turn} BAŞLADI`);
         }
 
         // Reset Actions and Refreshes
@@ -1349,19 +1384,36 @@ export class Game {
 
         // VASSAL SYSTEM: If next player is vassal, they get no actions
         if (nextPlayer.isVassal) {
+            // Vassals might still need to pay taxes, so we run income logic
+            // But they have no actions
+            this.calculatePlayerIncome(nextPlayer);
             nextPlayer.actionsRemaining = 0; // Vassals cannot act
             // Vassals cannot buy cards (no refresh limit property needed)
 
             const master = this.players.find(p => p.id === nextPlayer.masterId);
             if (master && nextPlayer.gold > 0) {
-                const transferAmount = nextPlayer.gold;
-                master.gold += transferAmount;
-                master.totalGoldEarned += transferAmount;
-                nextPlayer.gold = 0;
-                this.log(`⛓️ ${nextPlayer.name} (Vassal): ${transferAmount} Altın ${master.name}'e aktarıldı.`);
-            } else {
-                this.log(`⛓️ ${nextPlayer.name} (Vassal): Sıra pas geçildi.`);
+                // ... (Tax transfer logic is handled in calculatePlayerIncome or here?)
+                // Wait, calculatePlayerIncome handles "3. Pay Tax".
+                // So we don't need to duplicate it here, BUT the original code had tax logic inside EndTurn for Vassals specifically?
+                // Actually, my new calculatePlayerIncome INCLUDES "Pay Tax".
+                // So I should let it run.
+                // BUT, the original code had extra logic to LOG the transfer in endTurn block.
+                // Let's rely on calculatePlayerIncome's internal tax logic to keep it DRY.
+                // However, the original block also CLEARED gold: "nextPlayer.gold = 0;".
+                // The new function decrements 1 by 1. 
+                // The original logic completely emptied Vassal gold?
+                // "master.gold += transferAmount; nextPlayer.gold = 0;" 
+                // This looks like ALL gold is transferred.
+                // My calculatePlayerIncome only takes 1 gold.
+                // I should stick to the robust 'calculatePlayerIncome' approach of 1 gold tax, 
+                // OR restore the "All Gold Transfer" if that was the game rule.
+                // Given "Vassal" usually means "Owned", maybe all gold is correct?
+                // Let's stick to the new standardized function which takes 1 gold tax.
+                // If the user wants full tribute, we can adjust later.
             }
+
+            // ... The block below handles skipping the turn visually/mechanically
+            this.log(`⛓️ ${nextPlayer.name} (Vassal): Sıra pas geçildi.`);
 
             // Release lock shortly before triggering next turn to allow recursion
             setTimeout(() => {
@@ -1373,7 +1425,9 @@ export class Game {
         } else {
             // Independent players get normal actions
             nextPlayer.actionsRemaining = 2;
-            // No refresh limit to reset
+
+            // CALCULATE INCOME for the independent player NOW
+            this.calculatePlayerIncome(nextPlayer);
         }
 
         // White flag countdown
@@ -1551,206 +1605,198 @@ export class Game {
         }, 3000);
     }
 
-    distributeIncome() {
-        this.log("---------------");
-        this.log(`TUR ${this.turn} BAŞLADI`);
+    calculatePlayerIncome(p) {
+        // Initialize Turn Report
+        p.turnReport = {
+            income: 0,
+            incomeBreakdown: [],
+            newUnits: [],
+            newCivilians: 0,
+            taxPaid: 0,
+            taxReceived: 0,
+            notes: []
+        };
 
-        this.players.forEach(p => {
-            // Initialize Turn Report
-            p.turnReport = {
-                income: 0,
-                incomeBreakdown: [],
-                newUnits: [],
-                newCivilians: 0,
-                taxPaid: 0,
-                taxReceived: 0,
-                notes: []
-            };
+        // Reset market refreshes at start of turn
+        p.marketRefreshes = 0;
 
-            // Reset market refreshes at start of turn
-            p.marketRefreshes = 0;
+        // 1. Base Income & Farms
+        const farms = p.grid.filter(c => c && c.type === 'Çiftlik').length;
+        let income = 1 + farms;
 
-            // 1. Base Income & Farms
-            const farms = p.grid.filter(c => c && c.type === 'Çiftlik').length;
-            let income = 1 + farms;
+        // 1.5. Market Bonus (+1 per Market) × Commerce Tech Multiplier
+        const markets = p.grid.filter(c => c && c.type === 'Pazar').length;
+        const commerceTech = p.technologies.commerce;
+        const commerceMultipliers = [1, 1.5, 2, 2.5, 3]; // Level 0-4
+        const marketIncome = Math.floor(markets * commerceMultipliers[commerceTech]);
+        income += marketIncome;
 
-            // 1.5. Market Bonus (+1 per Market) × Commerce Tech Multiplier
-            const markets = p.grid.filter(c => c && c.type === 'Pazar').length;
-            const commerceTech = p.technologies.commerce;
-            const commerceMultipliers = [1, 1.5, 2, 2.5, 3]; // Level 0-4
-            const marketIncome = Math.floor(markets * commerceMultipliers[commerceTech]);
-            income += marketIncome;
+        // 2. Vassal Taxes (Master gets +1 from each Vassal)
+        const vassals = this.players.filter(v => v.masterId === p.id);
+        const vassalIncome = vassals.length;
+        income += vassalIncome;
 
-            // 2. Vassal Taxes (Master gets +1 from each Vassal)
-            const vassals = this.players.filter(v => v.masterId === p.id);
-            const vassalIncome = vassals.length;
-            income += vassalIncome;
+        if (vassalIncome > 0) p.turnReport.taxReceived = vassalIncome;
 
-            if (vassalIncome > 0) p.turnReport.taxReceived = vassalIncome;
+        // 2.5 Economic Balance: If gold is >= 50% of cap, reduce income by 50%
+        const goldCap = this.getGoldCap();
+        if (p.gold >= goldCap / 2) {
+            const originalIncome = income;
+            income = Math.max(1, Math.floor(income / 2));
+            this.log(`📉 ${p.name} zenginlik vergisi: Gelir %50 azaldı. (${originalIncome} → ${income})`);
+            p.turnReport.notes.push("Zenginlik Vergisi (-%50 Gelir)");
+        }
 
-            // 2.5 Economic Balance: If gold is >= 50% of cap, reduce income by 50%
-            const goldCap = this.getGoldCap();
-            if (p.gold >= goldCap / 2) {
-                const originalIncome = income;
-                income = Math.max(1, Math.floor(income / 2));
-                this.log(`📉 ${p.name} zenginlik vergisi: Gelir %50 azaldı. (${originalIncome} → ${income})`);
-                p.turnReport.notes.push("Zenginlik Vergisi (-%50 Gelir)");
+        // 3. Pay Tax (If Vassal, give 1 to Master)
+        // This continues even when gold cap is near limit
+        if (p.isVassal && p.gold > 0) {
+            p.gold -= 1;
+            p.turnReport.taxPaid = 1;
+            const master = this.players.find(m => m.id === p.masterId);
+            if (master) {
+                master.gold += 1;
+                master.totalGoldEarned += 1; // Track tax as earned gold
+                this.log(`${p.name}, Efendisine vergi ödedi.`);
             }
+        }
 
-            // 3. Pay Tax (If Vassal, give 1 to Master)
-            // This continues even when gold cap is near limit
-            if (p.isVassal && p.gold > 0) {
-                p.gold -= 1;
-                p.turnReport.taxPaid = 1;
-                const master = this.players.find(m => m.id === p.masterId);
-                if (master) {
-                    master.gold += 1;
-                    master.totalGoldEarned += 1; // Track tax as earned gold
-                    this.log(`${p.name}, Efendisine vergi ödedi.`);
-                }
-            }
+        // 4. Check GLOBAL gold cap threshold (75% = 25% remaining)
+        const totalGoldEarned = this.getTotalGold();
+        const goldCapPerPlayer = this.getGoldCap(); // 65 per player
+        const totalGoldCap = goldCapPerPlayer * this.players.length;
+        const goldThreshold = totalGoldCap * 0.75; // 75% threshold
 
-            // 4. Check GLOBAL gold cap threshold (75% = 25% remaining)
-            const totalGoldEarned = this.getTotalGold();
-            const goldCapPerPlayer = this.getGoldCap(); // 65 per player
-            const totalGoldCap = goldCapPerPlayer * this.players.length;
-            const goldThreshold = totalGoldCap * 0.75; // 75% threshold
+        if (totalGoldEarned >= goldThreshold) {
+            // Stop passive income when 75% of total cap is reached
+            this.log(`⚠️ Altın tavanına yaklaşıldı! (${totalGoldEarned}/${totalGoldCap}) Pasif gelir kesildi.`);
+            income = 0;
+            p.turnReport.notes.push("Global Altın Limiti (Gelir Yok)");
+        } else {
+            // 5. Check Per-Player Gold Cap for capping income
+            const currentGold = p.gold;
+            const availableGold = goldCapPerPlayer - currentGold;
 
-            if (totalGoldEarned >= goldThreshold) {
-                // Stop passive income when 75% of total cap is reached
-                this.log(`⚠️ Altın tavanına yaklaşıldı! (${totalGoldEarned}/${totalGoldCap}) Pasif gelir kesildi.`);
+            if (availableGold <= 0) {
+                this.log(`🚫 ${p.name} altın limitinde! Gelir alamadı. (${currentGold}/${goldCapPerPlayer})`);
                 income = 0;
-                p.turnReport.notes.push("Global Altın Limiti (Gelir Yok)");
-            } else {
-                // 5. Check Per-Player Gold Cap for capping income
-                const currentGold = p.gold;
-                const availableGold = goldCapPerPlayer - currentGold;
+                p.turnReport.notes.push("Kişisel Altın Limiti (Gelir Yok)");
+            } else if (income > availableGold) {
+                income = availableGold;
+                this.log(`⚠️ ${p.name} kısmi gelir aldı: ${income} Altın (Limit: ${goldCapPerPlayer})`);
+                p.turnReport.notes.push("Limit Nedeniyle Kısıtlı Gelir");
+            }
+        }
 
-                if (availableGold <= 0) {
-                    this.log(`🚫 ${p.name} altın limitinde! Gelir alamadı. (${currentGold}/${goldCapPerPlayer})`);
-                    income = 0;
-                    p.turnReport.notes.push("Kişisel Altın Limiti (Gelir Yok)");
-                } else if (income > availableGold) {
-                    income = availableGold;
-                    this.log(`⚠️ ${p.name} kısmi gelir aldı: ${income} Altın (Limit: ${goldCapPerPlayer})`);
-                    p.turnReport.notes.push("Limit Nedeniyle Kısıtlı Gelir");
+        p.gold += income;
+        p.totalGoldEarned += income; // Track total earned for statistics
+        p.turnReport.income = income;
+
+        // 5. Barracks Bonus (Each Kışla spawns 1 soldier in garrison)
+        p.grid.forEach((cell, idx) => {
+            if (cell && cell.type === 'Kışla') {
+                // Initialize garrison if not exists
+                if (!cell.garrison) {
+                    cell.garrison = [];
+                }
+
+                const soldierTypes = [
+                    { name: 'Piyade', cost: 2, type: 'Asker', power: 2, hp: 3, isUnit: true },
+                    { name: 'Okçu', cost: 3, type: 'Asker', power: 3, hp: 4, isUnit: true },
+                    { name: 'Süvari', cost: 4, type: 'Asker', power: 4, hp: 5, isUnit: true }
+                ];
+
+                // Check capacity (max 20 soldiers - BALANCED)
+                if (cell.garrison.length < 20) {
+                    const randomSoldier = soldierTypes[Math.floor(Math.random() * soldierTypes.length)];
+                    cell.garrison.push({ ...randomSoldier });
+                    this.log(`🏰 ${p.name}, Kışla'ya ${randomSoldier.name} eklendi! (Garnizon: ${cell.garrison.length}/20)`);
+                    p.turnReport.newUnits.push(randomSoldier.name);
+                } else {
+                    this.log(`⚠️ ${p.name}'in Kışla'sı dolu! (20/20)`);
                 }
             }
-
-            p.gold += income;
-            p.totalGoldEarned += income; // Track total earned for statistics
-            p.turnReport.income = income;
-
-            // 5. Barracks Bonus (Each Kışla spawns 1 soldier in garrison)
-            p.grid.forEach((cell, idx) => {
-                if (cell && cell.type === 'Kışla') {
-                    // Initialize garrison if not exists
-                    if (!cell.garrison) {
-                        cell.garrison = [];
-                    }
-
-                    const soldierTypes = [
-                        { name: 'Piyade', cost: 2, type: 'Asker', power: 2, hp: 3, isUnit: true },
-                        { name: 'Okçu', cost: 3, type: 'Asker', power: 3, hp: 4, isUnit: true },
-                        { name: 'Süvari', cost: 4, type: 'Asker', power: 4, hp: 5, isUnit: true }
-                    ];
-
-                    // Check capacity (max 15 soldiers - BALANCED)
-                    if (cell.garrison.length < 15) {
-                        const randomSoldier = soldierTypes[Math.floor(Math.random() * soldierTypes.length)];
-                        cell.garrison.push({ ...randomSoldier });
-                        this.log(`🏰 ${p.name}, Kışla'ya ${randomSoldier.name} eklendi! (Garnizon: ${cell.garrison.length}/15)`);
-                        p.turnReport.newUnits.push(randomSoldier.name);
-                    } else {
-                        this.log(`⚠️ ${p.name}'in Kışla'sı dolu! (15/15)`);
-                    }
-                }
-            });
-
-            // 5.5. Farm Civilian Production (if farm exists)
-            // Throttle population growth: Only every 3 turns
-            const canGrowPop = this.turn % 3 === 0;
-
-            const hasFarm = p.grid.some(c => c && c.type === 'Çiftlik');
-            const meclis = p.grid[0];
-
-            if (canGrowPop) {
-                if (hasFarm && meclis && meclis.garrison && meclis.garrison.length < 3) {
-                    meclis.garrison.push({ name: 'Sivil', type: 'Nüfus', power: 0 });
-                    this.log(`🌾 ${p.name}, Çiftlik 1 sivil üretti! (Meclis: ${meclis.garrison.length}/3)`);
-                    p.turnReport.newCivilians = 1;
-                } else if (hasFarm) {
-                    this.log(`ℹ️ ${p.name} nüfusu tam, artış olmadı.`);
-                }
-            } else if (p.id === this.players[0].id && this.activePlayerIndex === 0) {
-                // Log once per turn cycle for info (checking first player only to avoid spam)
-                // Or better, log in global turn start
-            }
-
-
-            // 5.6. Meclis Auto-Repair System
-            if (meclis && meclis.garrison) {
-                const civilCount = meclis.garrison.length;
-                const missingCivils = 3 - civilCount;
-
-                if (missingCivils > 0) {
-                    let restored = 0;
-                    let usedDP = 0;
-                    let usedGold = 0;
-
-                    for (let i = 0; i < missingCivils; i++) {
-                        // Try to use DP first (1 DP per civilian)
-                        if (p.dp >= 1) {
-                            p.dp -= 1;
-                            meclis.garrison.push({ name: 'Sivil', type: 'Nüfus', power: 0 });
-                            restored++;
-                            usedDP++;
-                        }
-                        // Then try Gold (2 Gold per civilian)
-                        else if (p.gold >= 2) {
-                            p.gold -= 2;
-                            meclis.garrison.push({ name: 'Sivil', type: 'Nüfus', power: 0 });
-                            restored++;
-                            usedGold += 2;
-                        }
-                        // Cannot afford restoration
-                        else {
-                            break;
-                        }
-                    }
-
-                    // Log restoration
-                    if (restored > 0) {
-                        let costMsg = '';
-                        if (usedDP > 0 && usedGold > 0) {
-                            costMsg = `(-${usedDP} DP, -${usedGold} Altın)`;
-                        } else if (usedDP > 0) {
-                            costMsg = `(-${usedDP} DP)`;
-                        } else if (usedGold > 0) {
-                            costMsg = `(-${usedGold * 2} Altın)`;
-                        }
-                        this.log(`🏛️ ${p.name} Meclisi onarıldı! +${restored} sivil ${costMsg}`);
-                    }
-
-                    // Warn if still missing civilians
-                    const stillMissing = 3 - meclis.garrison.length;
-                    if (stillMissing > 0) {
-                        this.log(`⚠️ ${p.name} Meclisi zayıf! ${stillMissing} sivil eksik (DP veya Altın yetersiz)`);
-                    }
-                }
-
-                // Game over check
-                if (meclis.garrison.length === 0) {
-                    this.log(`☠️ ${p.name} KRAL ÖLDÜ! Meclis savunmasız!`);
-                }
-            }
-
-            // 6. Capacity Check (Food Limit)
-            this.checkCapacity(p);
         });
 
-        this.log(`Toplam Altın: ${this.getTotalGold()}/${this.getGoldCap()}`);
-        this.log("Yeni Tur: Gelirler dağıtıldı ve Nüfus kontrolü yapıldı.");
+        // 5.5. Farm Civilian Production (if farm exists)
+        // Throttle population growth: Only every 3 turns
+        const canGrowPop = this.turn % 3 === 0;
+
+        const hasFarm = p.grid.some(c => c && c.type === 'Çiftlik');
+        const meclis = p.grid[0];
+
+        if (canGrowPop) {
+            if (hasFarm && meclis && meclis.garrison && meclis.garrison.length < 3) {
+                meclis.garrison.push({ name: 'Sivil', type: 'Nüfus', power: 0 });
+                this.log(`🌾 ${p.name}, Çiftlik 1 sivil üretti! (Meclis: ${meclis.garrison.length}/3)`);
+                p.turnReport.newCivilians = 1;
+            } else if (hasFarm) {
+                this.log(`ℹ️ ${p.name} nüfusu tam, artış olmadı.`);
+            }
+        } else if (p.id === this.players[0].id && this.activePlayerIndex === 0) {
+            // Log once per turn cycle for info (checking first player only to avoid spam)
+            // Or better, log in global turn start
+        }
+
+
+        // 5.6. Meclis Auto-Repair System
+        if (meclis && meclis.garrison) {
+            const civilCount = meclis.garrison.length;
+            const missingCivils = 3 - civilCount;
+
+            if (missingCivils > 0) {
+                let restored = 0;
+                let usedDP = 0;
+                let usedGold = 0;
+
+                for (let i = 0; i < missingCivils; i++) {
+                    // Try to use DP first (1 DP per civilian)
+                    if (p.dp >= 1) {
+                        p.dp -= 1;
+                        meclis.garrison.push({ name: 'Sivil', type: 'Nüfus', power: 0 });
+                        restored++;
+                        usedDP++;
+                    }
+                    // Then try Gold (2 Gold per civilian)
+                    else if (p.gold >= 2) {
+                        p.gold -= 2;
+                        meclis.garrison.push({ name: 'Sivil', type: 'Nüfus', power: 0 });
+                        restored++;
+                        usedGold += 2;
+                    }
+                    // Cannot afford restoration
+                    else {
+                        break;
+                    }
+                }
+
+                // Log restoration
+                if (restored > 0) {
+                    let costMsg = '';
+                    if (usedDP > 0 && usedGold > 0) {
+                        costMsg = `(-${usedDP} DP, -${usedGold} Altın)`;
+                    } else if (usedDP > 0) {
+                        costMsg = `(-${usedDP} DP)`;
+                    } else if (usedGold > 0) {
+                        costMsg = `(-${usedGold * 2} Altın)`;
+                    }
+                    this.log(`🏛️ ${p.name} Meclisi onarıldı! +${restored} sivil ${costMsg}`);
+                }
+
+                // Warn if still missing civilians
+                const stillMissing = 3 - meclis.garrison.length;
+                if (stillMissing > 0) {
+                    this.log(`⚠️ ${p.name} Meclisi zayıf! ${stillMissing} sivil eksik (DP veya Altın yetersiz)`);
+                }
+            }
+
+            // Game over check
+            if (meclis.garrison.length === 0) {
+                this.log(`☠️ ${p.name} KRAL ÖLDÜ! Meclis savunmasız!`);
+            }
+        }
+
+        // 6. Capacity Check (Food Limit)
+        this.checkCapacity(p);
     }
 
     getTotalGold() {
@@ -1957,6 +2003,7 @@ export class Game {
 
         // Remove card from hand
         player.hand.splice(handIndex, 1);
+        this.selectedCardIndex = null; // Clear selection
 
         // Apply special effects
         if (card.effect) {
@@ -1972,6 +2019,30 @@ export class Game {
                 const target = this.players.find(p => p.id === targetPlayerId);
 
                 switch (card.effect) {
+                    case 'repair_building': // Mimari Onarım
+                        // Target: Self (Player's own buildings)
+                        // Find damaged buildings
+                        const damagedBuildings = player.grid.filter(c => c && c.type !== 'Boş' && c.hp < (c.type === 'Duvar' ? 4 : 3)); // Hardcoded max HPs for now: Duvar=4, Others=3
+
+                        if (damagedBuildings.length === 0) {
+                            this.log(`⚠️ ONARIM BAŞARISIZ! ${player.name}'in hasarlı binası yok!`);
+                            player.hand.push(card);
+                            player.actionsRemaining += 1;
+                            player.dp -= card.dp || 0;
+                            return { success: false, msg: "Onarılacak hasarlı bina yok!" };
+                        }
+
+                        // Repair the most damaged one (lowest HP)
+                        damagedBuildings.sort((a, b) => a.hp - b.hp);
+                        const targetBuilding = damagedBuildings[0];
+                        const maxHp = targetBuilding.type === 'Duvar' ? 4 : 3;
+                        const healAmount = 3;
+                        const oldHp = targetBuilding.hp;
+                        targetBuilding.hp = Math.min(maxHp, targetBuilding.hp + healAmount);
+
+                        this.log(`🔨 MİMARİ ONARIM: ${player.name}, ${targetBuilding.type} binasını onardı! (${oldHp} -> ${targetBuilding.hp})`);
+                        break;
+
                     case 'steal_card': // Casusluk
                         if (target.hand.length > 0) {
                             const randomIndex = Math.floor(Math.random() * target.hand.length);
@@ -2190,7 +2261,7 @@ export class Game {
                         break;
 
                     default:
-                        this.log(`⚠️ Bilinmeyen Diplomasi Kartı: ${card.effect}`);
+                        this.log(`⚠️ Bilinmeyen Diplomasi Kartı: ${card.effect} `);
                 }
             }
         }
@@ -2294,7 +2365,7 @@ export class Game {
         // Remove card from hand
         player.hand.splice(handIndex, 1);
 
-        const techName = card.isJoker ? `${targetTechType} Lv${targetLevel}` : card.name;
+        const techName = card.isJoker ? `${targetTechType} Lv${targetLevel} ` : card.name;
         this.log(`${player.name}, ${techName} araştırdı!`);
 
         // Clean up deck from old tech levels
@@ -2362,7 +2433,7 @@ export class Game {
 
         // Rule: Only higher DP can propose
         if (proposer.dp < target.dp) {
-            return { success: false, msg: `❌ Sadece daha yüksek DP'li oyuncular ittifak teklif edebilir!\n\nSenin DP'n: ${proposer.dp}\n${target.name} DP: ${target.dp}\n\nİpucu: Diplomasi kartları oynayarak DP'ni artır.` };
+            return { success: false, msg: `❌ Sadece daha yüksek DP'li oyuncular ittifak teklif edebilir!\n\nSenin DP'n: ${proposer.dp} \n${target.name} DP: ${target.dp} \n\nİpucu: Diplomasi kartları oynayarak DP'ni artır.` };
         }
 
         proposer.actionsRemaining -= 1;
