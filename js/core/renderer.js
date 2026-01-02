@@ -35,6 +35,7 @@ export class Renderer {
             'Kışla': '⚔️',
             'Duvar': '🛡️',
             'Pazar': '🏪',
+            'Bilim Merkezi': '⚛️',
             'Piyade': '🗡️',
             'Okçu': '🏹',
             'Süvari': '🐎'
@@ -272,7 +273,7 @@ export class Renderer {
                                     <div class="cell-stats">
                                         <span class="hp">❤️${cell.hp || '-'}</span>
                                         ${cell.power ? `<span class="power" title="Efektif Savunma (Taban + Teknoloji + Duvar)">🛡️${effectivePower}</span>` : ''}
-                                        ${cell.garrison && (cell.type === 'Kışla' || cell.type === 'Meclis') ? `<span class="garrison">👥${cell.garrison.length}</span>` : ''}
+                                        ${cell.garrison && (cell.type === 'Kışla' || cell.type === 'Meclis' || cell.type === 'Bilim Merkezi') ? `<span class="garrison">👥${cell.garrison.length}</span>` : ''}
                                     </div>
                                 </div>
                             ` : `<span class="slot-empty">□</span>`}
@@ -299,7 +300,7 @@ export class Renderer {
                     const civilians = (meclis && meclis.garrison) ? meclis.garrison.length : 0;
 
                     const garrisonSoldiers = p.grid.reduce((sum, c) => {
-                        if (c && c.type === 'Kışla' && c.garrison) return sum + c.garrison.length;
+                        if (c && (c.type === 'Kışla' || c.type === 'Bilim Merkezi') && c.garrison) return sum + c.garrison.length;
                         return sum;
                     }, 0);
 
@@ -546,6 +547,22 @@ export class Renderer {
         });
 
         sortedMarket.forEach((card, index) => {
+            // Filter out irrelevant Technology cards for the ACTIVE player
+            // This hides shared market cards that are for other players' levels
+            // Exception: Joker is always relevant
+            if (card.type === 'Teknoloji' && !card.isJoker) {
+                const activePlayer = this.game.getActivePlayer();
+                const currentLevel = activePlayer.technologies[card.techType];
+
+                // Only show the EXACT next level
+                // Hide if:
+                // 1. Level is too high (> current + 1)
+                // 2. Level is already reached (<= current)
+                if (card.level !== currentLevel + 1) {
+                    return; // Skip rendering effectively "hides" it
+                }
+            }
+
             // Find original index for buyCard function
             const originalIndex = this.game.openMarket.indexOf(card);
             const el = document.createElement('div');

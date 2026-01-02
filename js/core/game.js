@@ -80,17 +80,19 @@ export class Game {
 
         const buildingCards = [];
         // Add Guaranteed Cards
-        for (let i = 0; i < baseAndCount * 2; i++) buildingCards.push({ name: 'Çiftlik', cost: 3, type: 'Bina', hp: 3, power: 8 });
-        for (let i = 0; i < baseAndCount * 3; i++) buildingCards.push({ name: 'Kışla', cost: 4, type: 'Bina', hp: 3, power: 12 });
-        for (let i = 0; i < baseAndCount * 1; i++) buildingCards.push({ name: 'Duvar', cost: 2, type: 'Bina', hp: 4, power: 20 });
+        for (let i = 0; i < baseAndCount * 2; i++) buildingCards.push({ name: 'Çiftlik', cost: 3, type: 'Bina', hp: 5, power: 8 });
+        for (let i = 0; i < baseAndCount * 3; i++) buildingCards.push({ name: 'Kışla', cost: 4, type: 'Bina', hp: 6, power: 12 });
+        for (let i = 0; i < baseAndCount * 1; i++) buildingCards.push({ name: 'Duvar', cost: 5, type: 'Bina', hp: 6, power: 20 });
         for (let i = 0; i < baseAndCount * 1; i++) buildingCards.push({ name: 'Pazar', cost: 3, type: 'Bina', hp: 3, power: 8 });
+        for (let i = 0; i < baseAndCount * 1; i++) buildingCards.push({ name: 'Bilim Merkezi', cost: 5, type: 'Bina', hp: 4, power: 5 });
 
         // Add Random Extra Buildings (pool of 5 per player)
         const extraBuildingTypes = [
-            { name: 'Çiftlik', cost: 3, type: 'Bina', hp: 3, power: 8 },
-            { name: 'Kışla', cost: 4, type: 'Bina', hp: 3, power: 12 },
-            { name: 'Duvar', cost: 2, type: 'Bina', hp: 4, power: 20 },
-            { name: 'Pazar', cost: 3, type: 'Bina', hp: 3, power: 8 }
+            { name: 'Çiftlik', cost: 3, type: 'Bina', hp: 5, power: 8 },
+            { name: 'Kışla', cost: 4, type: 'Bina', hp: 6, power: 12 },
+            { name: 'Duvar', cost: 5, type: 'Bina', hp: 6, power: 20 },
+            { name: 'Pazar', cost: 3, type: 'Bina', hp: 3, power: 8 },
+            { name: 'Bilim Merkezi', cost: 5, type: 'Bina', hp: 4, power: 5 }
         ];
         for (let i = 0; i < playerCount * 4; i++) {
             buildingCards.push(extraBuildingTypes[Math.floor(Math.random() * extraBuildingTypes.length)]);
@@ -410,10 +412,16 @@ export class Game {
         // Increment refresh counter
         activePlayer.marketRefreshes++;
 
-        // Return current cards to bottom of deck (recycle)
+        // Return current cards to bottom of deck (recycle), BUT keep Mercenaries
         if (this.openMarket.length > 0) {
-            this.market.push(...this.openMarket);
-            this.openMarket = [];
+            const mercenaries = this.openMarket.filter(c => c.type === 'Paralı Asker');
+            const others = this.openMarket.filter(c => c.type !== 'Paralı Asker');
+
+            if (others.length > 0) {
+                this.market.push(...others);
+            }
+            // Keep mercenaries in market logic (effectively "fixed")
+            this.openMarket = [...mercenaries];
         }
 
         // Refill market with new random cards
@@ -443,7 +451,7 @@ export class Game {
                 startingSoldiers.push(soldierTypes[Math.floor(Math.random() * soldierTypes.length)]);
             }
 
-            p.grid[3] = { type: 'Kışla', hp: 3, power: 12, garrison: startingSoldiers }; // Military building, starts with 5 soldiers
+            p.grid[3] = { type: 'Kışla', hp: 6, power: 12, garrison: startingSoldiers }; // Military building, starts with 5 soldiers
         });
         this.log("Krallıklar kuruldu.");
     }
@@ -547,6 +555,14 @@ export class Game {
         const card = this.openMarket[marketSlotIndex];
         if (player.gold < card.cost) return { success: false, msg: "Yetersiz Altın!" };
 
+        // New Rule: Technology Requires Science Center
+        if (card.type === 'Teknoloji') {
+            const hasScienceCenter = player.grid.some(cell => cell && cell.type === 'Bilim Merkezi');
+            if (!hasScienceCenter) {
+                return { success: false, msg: "Teknoloji geliştirmek için 'Bilim Merkezi' binasına sahip olmalısınız!" };
+            }
+        }
+
         // Execute Transaction
         player.gold -= card.cost;
         player.actionsRemaining -= 1;
@@ -582,11 +598,26 @@ export class Game {
         if (card.type === 'Diplomasi') {
             // Gain DP
             player.dp += card.dp || 0;
+            // Create new building
+            player.grid[slotIndex] = {
+                type: card.name,
+                hp: card.hp,
+                power: card.power
+            };
+
+            // SCENARIO: Bilim Merkezi starts with 1 Scientist and max 5 capacity
+            if (card.name === 'Bilim Merkezi') {
+                player.grid[slotIndex].garrison = [
+                    { name: 'Bilim İnsanı', type: 'Nüfus', power: 0 }
+                ];
+                player.grid[slotIndex].capacity = 5;
+                this.log(`🧪 Bilim Merkezi kuruldu! 1 Bilim İnsanı göreve başladı.`);
+            }
+
             player.actionsRemaining -= 1;
             player.hand.splice(this.selectedCardIndex, 1);
             this.selectedCardIndex = null;
-            this.log(`${player.name}, ${card.name} oynadı! +${card.dp} DP`);
-
+            this.log(`${player.name}, ${card.name} inşa etti.`);
             // TODO: Implement special effects (steal_card, gold_boost, etc.)
             this.checkAutoEndTurn();
             return { success: true };
@@ -831,7 +862,12 @@ export class Game {
         // Apply Defense Technology to building defense
         const defenseTech = defender.technologies.defense;
         const defenseMultipliers = [1, 1.2, 1.5, 2, 2.5]; // Level 0-4
-        const techBoostedDefense = Math.floor((targetCell.power || 0) * defenseMultipliers[defenseTech]);
+        let techBoostedDefense = Math.floor((targetCell.power || 0) * defenseMultipliers[defenseTech]);
+
+        // Apply Wall Bonus (Global +5 if any Wall exists)
+        const hasWall = defender.grid.some(c => c && c.type === 'Duvar');
+        const wallBonus = hasWall ? 5 : 0;
+        techBoostedDefense += wallBonus;
 
         const attackPower = techBoostedAttack + attackRoll + militaryBonus;
         const defensePower = techBoostedDefense + defenderMilitaryBonus + defenseRoll;
@@ -887,10 +923,19 @@ export class Game {
         ];
 
         if (defenseTech > 0) {
-            const techBonus = techBoostedDefense - (targetCell.power || 0);
+            // Recalculate pure tech bonus without wall for display
+            const rawTechVal = Math.floor((targetCell.power || 0) * defenseMultipliers[defenseTech]);
+            const techBonus = rawTechVal - (targetCell.power || 0);
             defenderBaseCalc.push({
                 text: `🛡️ Savunma Teknolojisi Lv${defenseTech} (×${defenseMultipliers[defenseTech]}): +${techBonus}`,
                 color: '#4ecdc4'
+            });
+        }
+
+        if (hasWall) {
+            defenderBaseCalc.push({
+                text: `🧱 Duvar Bonusu: +5`,
+                color: '#fbbf24'
             });
         }
 
@@ -945,7 +990,21 @@ export class Game {
         this.log(`Savunma: ${defensePower} (Bina: ${targetCell.power || 0}, Tek Bonus: ${techBoostedDefense - (targetCell.power || 0)}, Askeri %20: ${defenderMilitaryBonus}, Zar: ${defenseRoll})`);
 
         if (attackPower > defensePower) {
-            const damage = attackPower - defensePower;
+            const diff = attackPower - defensePower;
+            let damage = 0;
+
+            // Tiered Damage Logic (Close battles = Partial Damage)
+            if (diff <= 5) {
+                damage = 1; // Minor damage for close calls
+                this.log(`📉 KISMİ HASAR: Yakın mücadele! Sadece 1 hasar verildi.`);
+            } else if (diff <= 15) {
+                damage = 2; // Moderate damage
+                this.log(`💥 CİDDİ HASAR: Üstün saldırı! 2 hasar verildi.`);
+            } else {
+                damage = diff; // Overwhelming victory -> Full damage (likely destroys building)
+                this.log(`🔥 YIKICI SALDIRI! Fark çok büyük! ${damage} hasar verildi.`);
+            }
+
             targetCell.hp -= damage;
 
             // Store result for notification (shown after dice animation)
@@ -1285,7 +1344,11 @@ export class Game {
 
             if (myVassals.length === totalPlayers - 1) {
                 this.log(`🏆 OYUN BİTTİ! ${winner.name} MUTLAK HAKİM!`);
-                alert(`${winner.name} KAZANDI!`);
+                if (window.renderer && window.renderer.showGameOver) {
+                    window.renderer.showGameOver(winner);
+                } else {
+                    alert(`${winner.name} KAZANDI!`);
+                }
                 this.phase = 'SONUÇ'; // End Game State
                 this.gameEnded = true;
             }
@@ -1715,6 +1778,26 @@ export class Game {
                     this.log(`⚠️ ${p.name}'in Kışla'sı dolu! (20/20)`);
                 }
             }
+
+            // 5.1 Science Center Production (1 Scientist per turn for 1 Gold)
+            if (cell && cell.type === 'Bilim Merkezi') {
+                if (!cell.garrison) cell.garrison = [];
+
+                // Capacity Check (Max 5)
+                if (cell.garrison.length < 5) {
+                    // Cost Check (1 Gold)
+                    if (p.gold >= 1) {
+                        p.gold -= 1;
+                        cell.garrison.push({ name: 'Bilim İnsanı', type: 'Nüfus', power: 0 });
+                        this.log(`🧪 ${p.name}, Bilim Merkezi'ne yeni bilim insanı aldı! (-1 Altın)`);
+                    } else {
+                        // Not enough gold - no recruitment
+                        // this.log(`⚠️ ${p.name}, Bilim Merkezi için yeterli altına sahip değil.`);
+                    }
+                } else {
+                    this.log(`⚠️ ${p.name}'in Bilim Merkezi dolu! (5/5)`);
+                }
+            }
         });
 
         // 5.5. Farm Civilian Production (if farm exists)
@@ -2020,27 +2103,35 @@ export class Game {
 
                 switch (card.effect) {
                     case 'repair_building': // Mimari Onarım
-                        // Target: Self (Player's own buildings)
-                        // Find damaged buildings
-                        const damagedBuildings = player.grid.filter(c => c && c.type !== 'Boş' && c.hp < (c.type === 'Duvar' ? 4 : 3)); // Hardcoded max HPs for now: Duvar=4, Others=3
+                        // Target: Kışla, Duvar, Çiftlik only (as requested)
+                        const allowedTypes = ['Kışla', 'Duvar', 'Çiftlik'];
+                        const maxHpValues = { 'Kışla': 6, 'Duvar': 6, 'Çiftlik': 5 };
+
+                        // Find damaged valid buildings
+                        const damagedBuildings = player.grid.filter(c =>
+                            c &&
+                            allowedTypes.includes(c.type) &&
+                            c.hp < maxHpValues[c.type]
+                        );
 
                         if (damagedBuildings.length === 0) {
-                            this.log(`⚠️ ONARIM BAŞARISIZ! ${player.name}'in hasarlı binası yok!`);
+                            this.log(`⚠️ ONARIM BAŞARISIZ! ${player.name}'in onarılacak hasarlı binası (Kışla, Duvar, Çiftlik) yok!`);
                             player.hand.push(card);
                             player.actionsRemaining += 1;
                             player.dp -= card.dp || 0;
                             return { success: false, msg: "Onarılacak hasarlı bina yok!" };
                         }
 
-                        // Repair the most damaged one (lowest HP)
+                        // Repair the most damaged one (lowest HP relative to max? Or absolute?)
+                        // User strategy: Repair the one closest to death (lowest absolute HP)
                         damagedBuildings.sort((a, b) => a.hp - b.hp);
                         const targetBuilding = damagedBuildings[0];
-                        const maxHp = targetBuilding.type === 'Duvar' ? 4 : 3;
-                        const healAmount = 3;
-                        const oldHp = targetBuilding.hp;
-                        targetBuilding.hp = Math.min(maxHp, targetBuilding.hp + healAmount);
 
-                        this.log(`🔨 MİMARİ ONARIM: ${player.name}, ${targetBuilding.type} binasını onardı! (${oldHp} -> ${targetBuilding.hp})`);
+                        const oldHp = targetBuilding.hp;
+                        const targetMax = maxHpValues[targetBuilding.type];
+                        targetBuilding.hp = targetMax; // FULL REPAIR
+
+                        this.log(`🔨 MİMARİ ONARIM: ${player.name}, ${targetBuilding.type} binasını tamamen yeniledi! (${oldHp} -> ${targetBuilding.hp} HP)`);
                         break;
 
                     case 'steal_card': // Casusluk
@@ -2279,14 +2370,16 @@ export class Game {
         const card = player.hand[handIndex];
         if (!card || card.type !== 'Teknoloji') return { success: false, msg: "Geçersiz kart!" };
 
-        // Calculate total population (Meclis civilians + grid soldiers + garrison soldiers)
-        const totalPop = player.pop +
-            player.grid.filter(c => c && c.isUnit).length +
-            player.grid.reduce((sum, c) => sum + (c?.garrison?.length || 0), 0);
+        // Check available scientists in Science Centers
+        let totalScientists = 0;
+        player.grid.forEach(cell => {
+            if (cell && cell.type === 'Bilim Merkezi' && cell.garrison) {
+                totalScientists += cell.garrison.length;
+            }
+        });
 
-        // Check if player has enough population
-        if (totalPop < card.popCost) {
-            return { success: false, msg: `Yetersiz nüfus! ${card.popCost} nüfus gerekli. (Mevcut: ${totalPop})` };
+        if (totalScientists < card.popCost) {
+            return { success: false, msg: `Yetersiz Bilim İnsanı! ${card.popCost} Bilim İnsanı gerekli. (Mevcut: ${totalScientists})` };
         }
 
         let targetTechType = card.techType;
@@ -2334,26 +2427,15 @@ export class Game {
             }
         }
 
-        // Consume population from Meclis civilians first, then garrison
+        // Consume population (Scientists) from Science Centers
         let remaining = card.popCost;
-        const meclis = player.grid[0];
 
-        // Remove from Meclis civilians first
-        if (meclis && meclis.garrison) {
-            const civilsToRemove = Math.min(remaining, meclis.garrison.length);
-            meclis.garrison.splice(0, civilsToRemove);
-            remaining -= civilsToRemove;
-        }
-
-        // If still need to remove, take from Kışla garrisons
-        if (remaining > 0) {
-            for (let cell of player.grid) {
-                if (remaining <= 0) break;
-                if (cell && cell.type === 'Kışla' && cell.garrison && cell.garrison.length > 0) {
-                    const soldiersToRemove = Math.min(remaining, cell.garrison.length);
-                    cell.garrison.splice(0, soldiersToRemove);
-                    remaining -= soldiersToRemove;
-                }
+        for (let cell of player.grid) {
+            if (remaining <= 0) break;
+            if (cell && cell.type === 'Bilim Merkezi' && cell.garrison && cell.garrison.length > 0) {
+                const scientistsToRemove = Math.min(remaining, cell.garrison.length);
+                cell.garrison.splice(0, scientistsToRemove);
+                remaining -= scientistsToRemove;
             }
         }
 

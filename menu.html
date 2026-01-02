@@ -65,6 +65,167 @@
         </div>
     </div>
 
+    <!-- Modals -->
+    <div id="rules-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('rules-modal')">&times;</span>
+            <h2>📜 Oyun Kuralları</h2>
+            <div class="modal-body">
+                <h3>🏰 Amaç</h3>
+                <p>Krallıkların Terazisi'nde amaç, rakiplerini kendine bağlamaktır (Vasal yapmak). Bir oyuncunun
+                    başkentini (Meclis) ele geçirirsen senin vasalın olur. Tüm rakipleri vasal yapan kazanır.</p>
+
+                <h3>🛠️ Araçlar ve Binalar</h3>
+                <ul>
+                    <li><strong>Meclis (0 Altın):</strong> Başkentin. Yıkılırsa kaybedersin. Sivil barındırır (Eksilirse
+                        kaynakla yeniler).</li>
+                    <li><strong>Çiftlik (3 Altın, 5 HP):</strong> Tur başına +1 Altın verir. Her 3 turda bir 1 ücretsiz
+                        sivil üretir.</li>
+                    <li><strong>Kışla (4 Altın, 6 HP):</strong> Asker barındırır ve üretir (Max 20).</li>
+                    <li><strong>Duvar (5 Altın, 6 HP):</strong> Yüksek savunma (20 Güç) sağlar.</li>
+                    <li><strong>Pazar (3 Altın, 3 HP):</strong> Tur başına ekstra altın geliri sağlar.</li>
+                    <li><strong>Bilim Merkezi (5 Altın, 4 HP):</strong> Teknoloji için bilim insanı (1 Altın/Tur)
+                        üretir.</li>
+                </ul>
+
+                <h3>📜 Diplomasi Kartları</h3>
+                <p>Diplomasi kartları oynandığında sana <strong>DP (Diplomasi Puanı)</strong> kazandırır ve özel etkiler
+                    yaratır:</p>
+                <ul>
+                    <li><strong>Casusluk:</strong> Rakipten kart çalmanı sağlar.</li>
+                    <li><strong>Propaganda:</strong> Rakibin bir askeri birimini kendi tarafına çekersin.</li>
+                    <li><strong>Nifak Tohumu:</strong> İki müttefik arasındaki anlaşmayı bozarsın.</li>
+                    <li><strong>Mimari Onarım:</strong> Hasarlı binalarını (Kışla, Duvar) tamir eder.</li>
+                    <li><strong>Beyaz Bayrak:</strong> Bir tur boyunca saldırılardan korunursun.</li>
+                    <li><strong>Terör Jokeri:</strong> Rakibin rastgele bir binasını yok edersin!</li>
+                </ul>
+
+                <h3>🔬 Teknolojik Gelişim</h3>
+                <p>Krallığını güçlendirmek için teknoloji şarttır. Teknoloji kartı oynamak için:</p>
+                <ol>
+                    <li><strong>Bilim Merkezi</strong> kurmalısın.</li>
+                    <li>Merkezde yeterli sayıda <strong>Bilim İnsanı</strong> birikmiş olmalı.</li>
+                </ol>
+                <p><strong>Geliştirmeler:</strong></p>
+                <ul>
+                    <li><strong>⚔️ Silah:</strong> Askerlerinin saldırı gücünü katlar (x1.2, x1.5...).</li>
+                    <li><strong>🛡️ Savunma:</strong> Binalarının dayanıklılığını arttırır.</li>
+                    <li><strong>💰 Ticaret:</strong> Pazarlarından gelen geliri katlar.</li>
+                </ul>
+
+                <h3>⚔️ Oynanış</h3>
+                <ol>
+                    <li>Her tur 2 aksiyon hakkın var.</li>
+                    <li>Kart çekebilir, bina kurabilir veya saldırabilirsin.</li>
+                    <li>Teknoloji geliştirmek için önce Bilim Merkezi kurmalı ve bilim insanı biriktirmelisin.</li>
+                    <li>Askeri gücünü arttırarak rakiplerine saldır ve binalarını yık.</li>
+                </ol>
+
+                <h3>💡 Örnek Strateji</h3>
+                <p>Başlangıçta bir Çiftlik kurarak nüfus akışını sağla. Ardından bir Bilim Merkezi ile teknolojiye
+                    yatırım yap. Savunma için ön cepheye Duvar inşa et ve arkasına Kışla koyarak asker biriktir.
+                    Rakiplerin altını azaldığında saldırıya geç!</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="credits-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('credits-modal')">&times;</span>
+            <h2>ℹ️ Hakkında</h2>
+            <div class="modal-body" style="text-align: center;">
+                <p class="crown" style="font-size: 3rem; margin: 10px 0;">👑</p>
+                <h3>Krallıkların Terazisi</h3>
+                <p>Dijital Masa Oyunu - v2.0</p>
+                <hr style="border-color: var(--color-gold); opacity: 0.3; margin: 20px 0;">
+
+                <h4 style="color: var(--color-gold);">Oyun Sahibi ve Tasarımcısı</h4>
+                <h2 style="font-family: 'Cinzel', serif; color: white;">Yiğit Hamza ERSOY</h2>
+
+                <p style="margin-top: 20px; font-size: 0.9rem; color: #9ca3af;">
+                    Bu oyunun tüm hakları Yiğit Hamza ERSOY'a aittir.<br>
+                    İzinsiz kopyalanması veya çoğaltılması yasaktır.
+                </p>
+                <div style="margin-top: 30px; font-size: 0.8rem; color: #6b7280;">
+                    Developed with Antigravity AI
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, var(--color-slate-900), #1a1a2e);
+            border: 2px solid var(--color-gold);
+            border-radius: 12px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.2);
+            color: var(--color-slate-100);
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 2rem;
+            color: var(--color-gold);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .close-modal:hover {
+            transform: scale(1.1);
+            color: white;
+        }
+
+        .modal-body h3 {
+            color: var(--color-gold);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+            padding-bottom: 5px;
+            margin-top: 20px;
+        }
+
+        .modal-body ul,
+        .modal-body ol {
+            padding-left: 20px;
+            line-height: 1.6;
+        }
+
+        .modal-body li {
+            margin-bottom: 8px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+
     <script>
         let selectedPlayers = 2;
         let selectedBots = 0;
@@ -148,12 +309,24 @@
             window.location.href = 'game.html';
         });
 
+        // Modal Functions
         function showRules() {
-            alert('Kurallar ekranı yakında eklenecek!');
+            document.getElementById('rules-modal').style.display = 'flex';
         }
 
         function showCredits() {
-            alert('Krallıkların Terazisi v2.0\\n\\nTasarım: CIHAN\\nGeliştirme: Antigravity AI\\n\\n2025');
+            document.getElementById('credits-modal').style.display = 'flex';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Click outside to close
+        window.onclick = function (event) {
+            if (event.target.classList.contains('modal-overlay')) {
+                event.target.style.display = 'none';
+            }
         }
     </script>
 </body>
