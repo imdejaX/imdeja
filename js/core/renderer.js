@@ -26,6 +26,37 @@ export class Renderer {
             document.querySelector('.game-board').appendChild(logDiv);
             this.containers.logs = logDiv;
         }
+
+        // Add Subtitle Container (Footer Info)
+        if (!document.getElementById('game-subtitle')) {
+            const subDiv = document.createElement('div');
+            subDiv.id = 'game-subtitle';
+            subDiv.className = 'subtitle-zone';
+            // Basic styles for subtitle
+            subDiv.style.cssText = `
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: 40px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: linear-gradient(to right, rgba(0,0,0,0.95), rgba(15,15,15,0.98), rgba(0,0,0,0.95));
+                color: #fcd34d;
+                font-size: 0.95rem;
+                pointer-events: none;
+                z-index: 2000;
+                border-top: 1px solid rgba(251, 191, 36, 0.4);
+                opacity: 1;
+                transition: opacity 0.5s ease;
+                box-shadow: 0 -4px 10px rgba(0,0,0,0.5);
+                letter-spacing: 0.5px;
+                font-family: 'Cinzel', serif;
+            `;
+            document.body.appendChild(subDiv);
+            this.containers.subtitle = subDiv;
+        }
     }
 
     getBuildingIcon(type) {
@@ -473,7 +504,21 @@ export class Renderer {
                     // Attack Mode
                     if (this.game.actionMode === 'attack') {
                         if (pid !== activePlayer.id) {
-                            const result = this.game.initiateAttack(pid, idx);
+                            let result = this.game.initiateAttack(pid, idx);
+
+                            // Handle Confirmation (Alliance Betrayal)
+                            if (result.requiresConfirmation) {
+                                const confirmed = window.confirm(result.msg);
+                                if (confirmed) {
+                                    // Retry with confirmation flag
+                                    result = this.game.initiateAttack(pid, idx, true);
+                                } else {
+                                    // User cancelled
+                                    this.render();
+                                    return;
+                                }
+                            }
+
                             if (result.success === false) {
                                 alert(result.msg);
                             } else if (result.waitingForDice) {
@@ -812,6 +857,18 @@ export class Renderer {
         prompt.style.display = 'flex';
     }
 
+
+    showSubtitle(text) {
+        if (!this.containers.subtitle) return;
+        this.containers.subtitle.textContent = text;
+        this.containers.subtitle.style.opacity = '1';
+
+        // Removed timeout logic as user requested permanent visibility
+        if (this.subtitleTimeout) {
+            clearTimeout(this.subtitleTimeout);
+            this.subtitleTimeout = null;
+        }
+    }
 
     showDiceRoll(diceData) {
         const backdrop = document.getElementById('dice-backdrop');

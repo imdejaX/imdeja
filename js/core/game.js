@@ -515,7 +515,11 @@ export class Game {
         ];
 
         const randomTip = tips[Math.floor(Math.random() * tips.length)];
-        this.logs.unshift({ turn: this.turn, message: randomTip, isTip: true });
+
+        // Show as subtitle instead of log
+        if (window.renderer && window.renderer.showSubtitle) {
+            window.renderer.showSubtitle(randomTip);
+        }
     }
 
     // Action Mode System
@@ -683,7 +687,7 @@ export class Game {
     // COMBAT - Two Phase System for Manual Dice Rolling
 
     // Phase 1: Initiate Attack (Validation only, no dice yet)
-    initiateAttack(targetPlayerId, targetSlotIndex) {
+    initiateAttack(targetPlayerId, targetSlotIndex, confirmed = false) {
         const attacker = this.getActivePlayer();
         const defender = this.players.find(p => p.id === targetPlayerId);
 
@@ -701,6 +705,32 @@ export class Game {
         const whiteFlagPlayer = this.players.find(p => p.whiteFlagTurns > 0);
         if (whiteFlagPlayer) {
             return { success: false, msg: `🏳️ ${whiteFlagPlayer.name} beyaz bayrak çekti! Kimse saldırı yapamaz. (${whiteFlagPlayer.whiteFlagTurns} tur kaldı)` };
+        }
+
+        // RULE: BETRAYAL - Attacking an ally breaks the alliance + Penalty
+        if (attacker.allianceWith === defender.id) {
+            // CONFIRMATION CHECK
+            if (!confirmed) {
+                return {
+                    success: false,
+                    requiresConfirmation: true,
+                    msg: `⚠️ DİKKAT!\n\nMüttefiğin ${defender.name}'e saldırmak üzeresin!\n\nBunu yaparsan:\n1. İttifak BOZULACAK.\n2. İhanet bedeli olarak 2 DP kaybedeceksin.\n3. ${defender.name} tazminat olarak 3 Altın kazanacak.\n\nSaldırıya devam etmek istiyor musun?`
+                };
+            }
+
+            // Log the betrayal
+            this.log(`😱 İHANET! ${attacker.name}, müttefiği ${defender.name}'e saldırdı!`);
+
+            // Apply Penalty (Attacker loses DP, Defender gains Gold)
+            attacker.dp = Math.max(1, attacker.dp - 2);
+            defender.gold += 3;
+            defender.totalGoldEarned += 3;
+
+            // Break the alliance
+            attacker.allianceWith = null;
+            defender.allianceWith = null;
+
+            this.log(`💔 İttifak bozuldu. ${attacker.name}: -2 DP, ${defender.name}: +3 Altın (Tazminat)`);
         }
 
 
@@ -1209,6 +1239,7 @@ export class Game {
             this.checkAutoEndTurn();
             return { success: true, showDice: true };
         }
+        return { success: true, showDice: true };
     }
 
     showAttackResultNotification(attackData) {
@@ -1769,6 +1800,10 @@ export class Game {
         p.turnReport.income = income;
 
         // 5. Barracks Bonus (Each Kışla spawns 1 soldier in garrison)
+        let totalProduced = 0;
+        let fullBarracksCount = 0;
+        const newSoldiers = [];
+
         p.grid.forEach((cell, idx) => {
             if (cell && cell.type === 'Kışla') {
                 // Initialize garrison if not exists
@@ -1786,939 +1821,957 @@ export class Game {
                 if (cell.garrison.length < 15) {
                     const randomSoldier = soldierTypes[Math.floor(Math.random() * soldierTypes.length)];
                     cell.garrison.push({ ...randomSoldier });
-                    this.log(`🏰 ${p.name}, Kışla'ya ${randomSoldier.name} eklendi! (Garnizon: ${cell.garrison.length}/15)`);
+
+                    totalProduced++;
+                    newSoldiers.push(randomSoldier.name);
                     p.turnReport.newUnits.push(randomSoldier.name);
                 } else {
-                    this.log(`⚠️ ${p.name}'in Kışla'sı dolu! (15/15)`);
+                    fullBarracksCount++;
                 }
             }
+        });
 
-            // 5.1 Science Center Production (1 Scientist per turn for 1 Gold)
-            if (cell && cell.type === 'Bilim Merkezi') {
-                if (!cell.garrison) cell.garrison = [];
+        if (totalProduced > 0) {
+            // Summary Log
+            const uniqueTypes = [...new Set(newSoldiers)];
+            const typeSummary = uniqueTypes.map(type => {
+                const count = newSoldiers.filter(t => t === type).length;
+                return `${count} ${type}`;
+            }).join(', ');
 
-                // Capacity Check (Max 5)
-                if (cell.garrison.length < 5) {
-                    // Cost Check (1 Gold)
-                    if (p.gold >= 1) {
-                        p.gold -= 1;
-                        cell.garrison.push({ name: 'Bilim İnsanı', type: 'Nüfus', power: 0 });
-                        this.log(`🧪 ${p.name}, Bilim Merkezi'ne yeni bilim insanı aldı! (-1 Altın)`);
-                    } else {
-                        // Not enough gold - no recruitment
-                        // this.log(`⚠️ ${p.name}, Bilim Merkezi için yeterli altına sahip değil.`);
-                    }
+            this.log(`🏰 ${p.name}, Kışlalardan +${totalProduced} asker kazandı! (${typeSummary})`);
+        }
+
+        if (fullBarracksCount > 0) {
+            this.log(`⚠️ ${p.name}: ${fullBarracksCount} Kışla kapasitesi dolu! (Max 15/Kışla)`);
+        }
+
+        // 5.1 Science Center Production (1 Scientist per turn for 1 Gold)
+        if (cell && cell.type === 'Bilim Merkezi') {
+            if (!cell.garrison) cell.garrison = [];
+
+            // Capacity Check (Max 5)
+            if (cell.garrison.length < 5) {
+                // Cost Check (1 Gold)
+                if (p.gold >= 1) {
+                    p.gold -= 1;
+                    cell.garrison.push({ name: 'Bilim İnsanı', type: 'Nüfus', power: 0 });
+                    this.log(`🧪 ${p.name}, Bilim Merkezi'ne yeni bilim insanı aldı! (-1 Altın)`);
                 } else {
-                    this.log(`⚠️ ${p.name}'in Bilim Merkezi dolu! (5/5)`);
+                    // Not enough gold - no recruitment
+                    // this.log(`⚠️ ${p.name}, Bilim Merkezi için yeterli altına sahip değil.`);
                 }
-            }
-        });
-
-        // 5.5. Farm Civilian Production (if farm exists)
-        // Throttle population growth: Only every 3 turns
-        const canGrowPop = this.turn % 3 === 0;
-
-        const hasFarm = p.grid.some(c => c && c.type === 'Çiftlik');
-        const meclis = p.grid[0];
-
-        if (canGrowPop) {
-            if (hasFarm && meclis && meclis.garrison && meclis.garrison.length < 3) {
-                meclis.garrison.push({ name: 'Sivil', type: 'Nüfus', power: 0 });
-                this.log(`🌾 ${p.name}, Çiftlik 1 sivil üretti! (Meclis: ${meclis.garrison.length}/3)`);
-                p.turnReport.newCivilians = 1;
-            } else if (hasFarm) {
-                this.log(`ℹ️ ${p.name} nüfusu tam, artış olmadı.`);
-            }
-        } else if (p.id === this.players[0].id && this.activePlayerIndex === 0) {
-            // Log once per turn cycle for info (checking first player only to avoid spam)
-            // Or better, log in global turn start
-        }
-
-
-        // 5.6. Meclis Auto-Repair System
-        if (meclis && meclis.garrison) {
-            const civilCount = meclis.garrison.length;
-            const missingCivils = 3 - civilCount;
-
-            if (missingCivils > 0) {
-                let restored = 0;
-                let usedDP = 0;
-                let usedGold = 0;
-
-                for (let i = 0; i < missingCivils; i++) {
-                    // Try to use DP first (1 DP per civilian)
-                    if (p.dp >= 1) {
-                        p.dp -= 1;
-                        meclis.garrison.push({ name: 'Sivil', type: 'Nüfus', power: 0 });
-                        restored++;
-                        usedDP++;
-                    }
-                    // Then try Gold (2 Gold per civilian)
-                    else if (p.gold >= 2) {
-                        p.gold -= 2;
-                        meclis.garrison.push({ name: 'Sivil', type: 'Nüfus', power: 0 });
-                        restored++;
-                        usedGold += 2;
-                    }
-                    // Cannot afford restoration
-                    else {
-                        break;
-                    }
-                }
-
-                // Log restoration
-                if (restored > 0) {
-                    let costMsg = '';
-                    if (usedDP > 0 && usedGold > 0) {
-                        costMsg = `(-${usedDP} DP, -${usedGold} Altın)`;
-                    } else if (usedDP > 0) {
-                        costMsg = `(-${usedDP} DP)`;
-                    } else if (usedGold > 0) {
-                        costMsg = `(-${usedGold * 2} Altın)`;
-                    }
-                    this.log(`🏛️ ${p.name} Meclisi onarıldı! +${restored} sivil ${costMsg}`);
-                }
-
-                // Warn if still missing civilians
-                const stillMissing = 3 - meclis.garrison.length;
-                if (stillMissing > 0) {
-                    this.log(`⚠️ ${p.name} Meclisi zayıf! ${stillMissing} sivil eksik (DP veya Altın yetersiz)`);
-                }
-            }
-
-            // Game over check
-            if (meclis.garrison.length === 0) {
-                this.log(`☠️ ${p.name} KRAL ÖLDÜ! Meclis savunmasız!`);
-            }
-        }
-
-        // 6. Capacity Check (Food Limit)
-        this.checkCapacity(p);
-    }
-
-    getTotalGold() {
-        // Return total earned gold (starting + all income), not current gold
-        return this.players.reduce((sum, p) => sum + p.totalGoldEarned, 0);
-    }
-
-    getGoldCap() {
-        // Per-player gold cap (not global pool)
-        return 65;
-    }
-
-    getCapacityInfo(player) {
-        // Base Capacity = 3 (Meclis) + (Barracks * 15)
-        // Farms DO NOT count. Garrison Soldiers DO NOT count towards capacity.
-        const barracks = player.grid.filter(c => c && c.type === 'Kışla').length;
-
-        let baseCapacity = 3 + (barracks * 15);
-
-        // Apply Food Technology Multiplier
-        const foodTech = player.technologies.food;
-        const techMultipliers = [1, 1.5, 3, 4.5, 6];
-        const capacity = Math.floor(baseCapacity * techMultipliers[foodTech]);
-
-        // Total Units = Pop (Civilians + Units on Grid + Garrison Soldiers)
-        let armyCount = player.grid.filter(c => c && c.isUnit).length;
-
-        // Count civilians in Meclis (assuming 1 Meclis per player, usually counts as 3 pop base if player.pop is 0)
-        let basePop = player.pop > 0 ? player.pop : 3;
-
-        // Calculate Garrison Soldiers (needed for Total Pop, but not Capacity)
-        const garrisonSoldiers = player.grid.reduce((sum, c) => {
-            if (c && c.type === 'Kışla' && c.garrison) {
-                return sum + c.garrison.length;
-            }
-            return sum;
-        }, 0);
-
-        // Total Population = Base (Civilians) + Army on Grid + Garrison Soldiers
-        let totalPop = basePop + armyCount + garrisonSoldiers;
-
-        return { capacity, totalPop };
-    }
-
-    checkCapacity(player) {
-        const { capacity, totalPop } = this.getCapacityInfo(player);
-
-        if (totalPop > capacity) {
-            const excess = totalPop - capacity;
-            this.log(`🛑 ${player.name} GIDA KITLIĞI! Kapasite: ${capacity}, Nüfus: ${totalPop}`);
-
-            // Return soldiers to mercenary pool instead of killing them
-            let returned = 0;
-            for (let i = 0; i < player.grid.length; i++) {
-                if (returned >= excess) break;
-                if (player.grid[i] && player.grid[i].isUnit) {
-                    const soldier = player.grid[i];
-                    this.log(`🔄 Havuza döndü: ${soldier.type}`);
-
-                    // Add to mercenary pool with original card properties
-                    this.mercenaryPool.push({
-                        id: `merc-${Date.now()}-${i}`,
-                        name: soldier.type,
-                        cost: soldier.type === 'Piyade' ? 2 : soldier.type === 'Okçu' ? 3 : 4,
-                        type: 'Asker',
-                        power: soldier.power || (soldier.type === 'Piyade' ? 2 : soldier.type === 'Okçu' ? 3 : 4),
-                        isPoolSoldier: true
-                    });
-
-                    player.grid[i] = null;
-                    returned++;
-                }
-            }
-
-            if (returned > 0) {
-                this.log(`♻️ ${returned} asker havuza eklendi. Pazarda satılacak.`);
-            }
-        }
-    }
-
-    // --- BARRACKS DESTRUCTION & MERCENARY SYSTEM ---
-
-    handleBarracksDestruction(attacker, defender, garrison) {
-        if (!garrison || garrison.length === 0) return;
-
-        const totalSoldiers = garrison.length;
-        const halfCount = Math.floor(totalSoldiers / 2);
-
-        // Attacker gets half
-        const attackerShare = garrison.slice(0, halfCount);
-        // User said "50% attacker, 50% defender". Let's give remainder to defender.
-        const defenderShare = garrison.slice(halfCount);
-
-        this.log(`⚖️ Asker Paylaşımı: ${attacker.name} (${attackerShare.length}), ${defender.name} (${defenderShare.length})`);
-
-        // Distribute or Sell
-        if (attackerShare.length > 0) this.distributeOrSellSoldiers(attacker, attackerShare, 'attacker');
-        if (defenderShare.length > 0) this.distributeOrSellSoldiers(defender, defenderShare, 'defender');
-    }
-
-    distributeOrSellSoldiers(player, soldiers, role) {
-        // 1. Try to fill existing Barracks
-        const barracksList = player.grid.filter(c => c && c.type === 'Kışla');
-        const remainingSoldiers = [];
-
-        for (const soldier of soldiers) {
-            let placed = false;
-            for (const barracks of barracksList) {
-                if (!barracks.garrison) barracks.garrison = [];
-                if (barracks.garrison.length < 15) {
-                    barracks.garrison.push(soldier);
-                    placed = true;
-                    break;
-                }
-            }
-            if (!placed) {
-                remainingSoldiers.push(soldier);
-            }
-        }
-
-        const placedCount = soldiers.length - remainingSoldiers.length;
-        if (placedCount > 0) {
-            const verb = role === 'attacker' ? 'katıldı' : 'sığındı';
-            this.log(`➡️ ${placedCount} asker ${player.name} ordusuna ${verb}.`);
-        }
-
-        // 2. Sell Overflow to Market as Mercenary Card
-        if (remainingSoldiers.length > 0) {
-            const count = remainingSoldiers.length;
-            const cost = this.calculateMercenaryCost(count);
-
-            const mercenaryCard = {
-                id: 'merc_' + Date.now() + '_' + Math.random(),
-                type: 'Paralı Asker',
-                name: `Paralı Asker (${count})`,
-                count: count,
-                soldiers: remainingSoldiers,
-                cost: cost,
-                description: `${count} adet tecrübeli asker.`
-            };
-
-            if (!this.openMarket) this.openMarket = [];
-            this.openMarket.push(mercenaryCard);
-            this.log(`💰 ${count} asker sığacak yer bulamadı ve Paralı Asker olarak pazara düştü! (${cost} Altın)`);
-        }
-    }
-
-    calculateMercenaryCost(count) {
-        if (count <= 10) return 1;
-        if (count <= 20) return 2;
-        return 3; // 21-30+
-    }
-
-    playMercenaryCard(handIndex) {
-        const player = this.getActivePlayer();
-        if (player.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
-
-        const card = player.hand[handIndex];
-        if (!card || card.type !== 'Paralı Asker') return { success: false, msg: "Geçersiz kart!" };
-
-        // Try to place soldiers
-        const soldiers = card.soldiers;
-        const barracksList = player.grid.filter(c => c && c.type === 'Kışla');
-        let placedCount = 0;
-
-        for (const soldier of soldiers) {
-            for (const barracks of barracksList) {
-                if (!barracks.garrison) barracks.garrison = [];
-                if (barracks.garrison.length < 15) {
-                    barracks.garrison.push(soldier);
-                    placedCount++;
-                    break;
-                }
-            }
-        }
-
-        if (placedCount === 0) {
-            return { success: false, msg: "Kışlalarda hiç yer yok!" };
-        }
-
-        // Action cost
-        player.actionsRemaining -= 1;
-        player.hand.splice(handIndex, 1);
-
-        this.log(`⚔️ ${player.name}, ${placedCount} paralı askeri ordusuna kattı!`);
-
-        if (placedCount < soldiers.length) {
-            this.log(`⚠️ ${soldiers.length - placedCount} asker yer bulamadığı için dağıldı.`);
-        }
-
-        this.checkAutoEndTurn();
-        return { success: true };
-    }
-
-    // DIPLOMACY
-    playDiplomacyCard(handIndex, targetPlayerId = null) {
-        const player = this.getActivePlayer();
-        if (player.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
-
-        const card = player.hand[handIndex];
-        if (!card || card.type !== 'Diplomasi') return { success: false, msg: "Geçersiz kart!" };
-
-        // Validate target BEFORE consuming action (for cards that need target)
-        if (card.effect && card.effect !== 'gold_boost' && card.effect !== 'military_boost' && card.effect !== 'white_flag') {
-            if (!targetPlayerId) return { success: false, msg: "Bu kart için bir hedef seçmelisin!" };
-            const target = this.players.find(p => p.id === targetPlayerId);
-            if (!target) return { success: false, msg: "Hedef bulunamadı!" };
-        }
-
-        // NOW consume action (after validation)
-        player.actionsRemaining -= 1;
-
-        // Gain DP
-        player.dp += card.dp || 0;
-
-        this.log(`${player.name}, ${card.name} oynadı! +${card.dp} DP`);
-
-        // Remove card from hand
-        player.hand.splice(handIndex, 1);
-        this.selectedCardIndex = null; // Clear selection
-
-        // Apply special effects
-        if (card.effect) {
-            if (card.effect === 'gold_boost') {
-                player.gold += 3;
-                player.totalGoldEarned += 3;
-                this.log(`💰 ${player.name}, +3 Altın kazandı!`);
-            } else if (card.effect === 'military_boost') {
-                player.militaryBoost = 3;
-                this.log(`⚔️ ${player.name}, **sonraki saldırısında** +3 güç bonusu kazandı!`);
             } else {
-                // Target already validated above
-                const target = this.players.find(p => p.id === targetPlayerId);
+                this.log(`⚠️ ${p.name}'in Bilim Merkezi dolu! (5/5)`);
+            }
+        }
+    });
 
-                switch (card.effect) {
-                    case 'repair_building': // Mimari Onarım
-                        // Target: Kışla, Duvar, Çiftlik only (as requested)
-                        const allowedTypes = ['Kışla', 'Duvar', 'Çiftlik'];
-                        const maxHpValues = { 'Kışla': 6, 'Duvar': 6, 'Çiftlik': 5 };
+    // 5.5. Farm Civilian Production (if farm exists)
+    // Throttle population growth: Only every 3 turns
+    const canGrowPop = this.turn % 3 === 0;
 
-                        // Find damaged valid buildings
-                        const damagedBuildings = player.grid.filter(c =>
-                            c &&
-                            allowedTypes.includes(c.type) &&
-                            c.hp < maxHpValues[c.type]
-                        );
+    const hasFarm = p.grid.some(c => c && c.type === 'Çiftlik');
+    const meclis = p.grid[0];
 
-                        if (damagedBuildings.length === 0) {
-                            this.log(`⚠️ ONARIM BAŞARISIZ! ${player.name}'in onarılacak hasarlı binası (Kışla, Duvar, Çiftlik) yok!`);
-                            player.hand.push(card);
-                            player.actionsRemaining += 1;
-                            player.dp -= card.dp || 0;
-                            return { success: false, msg: "Onarılacak hasarlı bina yok!" };
-                        }
+    if(canGrowPop) {
+        if (hasFarm && meclis && meclis.garrison && meclis.garrison.length < 3) {
+            meclis.garrison.push({ name: 'Sivil', type: 'Nüfus', power: 0 });
+            this.log(`🌾 ${p.name}, Çiftlik 1 sivil üretti! (Meclis: ${meclis.garrison.length}/3)`);
+            p.turnReport.newCivilians = 1;
+        } else if (hasFarm) {
+            this.log(`ℹ️ ${p.name} nüfusu tam, artış olmadı.`);
+        }
+    } else if(p.id === this.players[0].id && this.activePlayerIndex === 0) {
+    // Log once per turn cycle for info (checking first player only to avoid spam)
+    // Or better, log in global turn start
+}
 
-                        // Repair the most damaged one (lowest HP relative to max? Or absolute?)
-                        // User strategy: Repair the one closest to death (lowest absolute HP)
-                        damagedBuildings.sort((a, b) => a.hp - b.hp);
-                        const targetBuilding = damagedBuildings[0];
 
-                        const oldHp = targetBuilding.hp;
-                        const targetMax = maxHpValues[targetBuilding.type];
-                        targetBuilding.hp = targetMax; // FULL REPAIR
+// 5.6. Meclis Auto-Repair System
+if (meclis && meclis.garrison) {
+    const civilCount = meclis.garrison.length;
+    const missingCivils = 3 - civilCount;
 
-                        this.log(`🔨 MİMARİ ONARIM: ${player.name}, ${targetBuilding.type} binasını tamamen yeniledi! (${oldHp} -> ${targetBuilding.hp} HP)`);
-                        break;
+    if (missingCivils > 0) {
+        let restored = 0;
+        let usedDP = 0;
+        let usedGold = 0;
 
-                    case 'steal_card': // Casusluk
-                        if (target.hand.length > 0) {
-                            const randomIndex = Math.floor(Math.random() * target.hand.length);
-                            const stolenCard = target.hand.splice(randomIndex, 1)[0];
-                            player.hand.push(stolenCard);
-                            this.log(`🕵️ CASUSLUK BAŞARILI! ${player.name}, ${target.name}'den "${stolenCard.name}" kartını çaldı!`);
-                        } else {
-                            this.log(`⚠️ CASUSLUK BAŞARISIZ! ${target.name}'in elinde kart yok!`);
-                        }
-                        break;
-
-                    case 'steal_unit': // Propaganda
-                        const units = target.grid.map((cell, idx) => ({ cell, idx })).filter(item => item.cell && item.cell.isUnit);
-                        if (units.length > 0) {
-                            const randomUnit = units[Math.floor(Math.random() * units.length)];
-                            const emptySlots = player.grid.map((cell, idx) => ({ cell, idx })).filter(item => !item.cell);
-
-                            if (emptySlots.length > 0) {
-                                // Check Population Limit
-                                const { capacity, totalPop } = this.getCapacityInfo(player);
-                                if (totalPop + 1 > capacity) {
-                                    this.log(`⚠️ PROPAGANDA BAŞARISIZ! ${player.name} nüfus limiti dolu! (${totalPop}/${capacity})`);
-                                    break;
-                                }
-
-                                const targetSlot = emptySlots[0];
-                                const stolenUnitType = target.grid[randomUnit.idx].type;
-                                player.grid[targetSlot.idx] = target.grid[randomUnit.idx];
-                                target.grid[randomUnit.idx] = null;
-                                this.log(`🎭 PROPAGANDA BAŞARILI! ${player.name}, ${target.name}'den ${stolenUnitType} çaldı ve kendi ordusuna kattı!`);
-
-                                // Show propaganda success notification
-                                this.showPropagandaNotification({
-                                    attacker: player.name,
-                                    attackerColor: player.color,
-                                    defender: target.name,
-                                    defenderColor: target.color,
-                                    unitName: stolenUnitType
-                                });
-                            } else {
-                                this.log(`⚠️ PROPAGANDA BAŞARISIZ! ${player.name}'in boş alanı yok, birim çalınamadı!`);
-                            }
-                        } else {
-                            this.log(`⚠️ PROPAGANDA BAŞARISIZ! ${target.name}'in askeri birimi yok!`);
-                        }
-                        break;
-
-                    case 'break_alliance': // Nifak Tohumu - Break target's alliance
-                        // Check military requirement
-                        const playerMilitary = this.calculateMilitary(player);
-                        if (playerMilitary < (card.minMilitary || 20)) {
-                            this.log(`❌ NİFAK TOHUMU BAŞARISIZ! ${player.name} yeterli askeri güce sahip değil! (${playerMilitary}/20)`);
-                            player.hand.push(card);
-                            player.actionsRemaining += 1;
-                            player.dp -= card.dp || 0;
-                            return { success: false, msg: `En az 20 askeri güç gerekli! (Mevcut: ${playerMilitary})` };
-                        }
-
-                        // Check if target has an alliance
-                        if (!target.allianceWith) {
-                            this.log(`❌ NİFAK TOHUMU BAŞARISIZ! ${target.name}'in ittifakı yok!`);
-                            player.hand.push(card);
-                            player.actionsRemaining += 1;
-                            player.dp -= card.dp || 0;
-                            return { success: false, msg: `${target.name}'in ittifakı yok!` };
-                        }
-
-                        // Calculate success based on military power + DP
-                        const targetAlly = this.players.find(p => p.id === target.allianceWith);
-                        const attackerPower = playerMilitary + player.dp;
-                        const targetMilitary = this.calculateMilitary(target);
-                        const allyMilitary = this.calculateMilitary(targetAlly);
-                        const defenderPower = targetMilitary + target.dp + allyMilitary + targetAlly.dp;
-
-                        this.log(`⚔️ NİFAK TOHUMU: ${player.name} (Güç: ${attackerPower}) vs ${target.name}+${targetAlly.name} (Güç: ${defenderPower})`);
-
-                        if (attackerPower > defenderPower) {
-                            // Success - Break the alliance
-                            target.allianceWith = null;
-                            targetAlly.allianceWith = null;
-
-                            this.log(`✅ NİFAK TOHUMU BAŞARILI! ${player.name}, ${target.name} ile ${targetAlly.name} arasındaki ittifakı bozdu!`);
-                            this.log(`${target.name} ve ${targetAlly.name} artık müttefik değil!`);
-                        } else {
-                            // Failure - Card wasted, penalties
-                            player.dp = Math.max(1, player.dp - 2);
-                            target.dp += 1;
-                            targetAlly.dp += 1;
-
-                            this.log(`❌ NİFAK TOHUMU BAŞARISIZ! İttifak çok güçlü!`);
-                            this.log(`${player.name}: -2 DP | ${target.name}: +1 DP | ${targetAlly.name}: +1 DP`);
-                        }
-                        break;
-
-                    case 'terror_joker': // Terör Jokeri
-                        // Requirement: 10 DP
-                        if (player.dp < 10) {
-                            this.log(`❌ TERÖR JOKERİ BAŞARISIZ! ${player.name} yeterli DP'ye sahip değil! (${player.dp}/10)`);
-                            player.hand.push(card);
-                            player.actionsRemaining += 1;
-                            // No DP cost if failed requirement? Or penalty? Usually just return card.
-                            return { success: false, msg: `En az 10 DP gerekli! (Mevcut: ${player.dp})` };
-                        }
-
-                        // Usage Cost: 2 DP
-                        player.dp = Math.max(0, player.dp - 2);
-
-                        // Target validation
-                        const terrorTarget = target.grid.map((cell, idx) => ({ cell, idx })).filter(item => item.cell && !item.cell.isUnit); // Buildings only
-
-                        // Specific target logic needed? 
-                        // Current `playDiplomacyCard` doesn't pass specific slot index, only player ID.
-                        // So we need to select a random building OR ask user to target a slot.
-                        // Since `playDiplomacyCard` structure assumes "Target Player", we will pick a RANDOM building for now or implementing targeting is complex.
-                        // Wait, `attackSlot` uses `targetSlotIndex`. `playDiplomacyCard` does NOT interact with grid clicks in the same way.
-                        // Renderer handles 'Diplomacy' with `needsTarget` by entering a mode?
-                        // Line 628 in renderer.js: `this.game.pendingDiplomacyCard = { cardIndex: index, card: card };`
-                        // This allows clicking a player card. It DOES NOT allow clicking a grid slot.
-
-                        // PROPOSAL: Terror Joker destroys a RANDOM building of the target player (excluding Meclis).
-                        // This fits the "Terror" theme (unpredictable/chaos) and existing UI constraints.
-
-                        const destructibleBuildings = target.grid
-                            .map((cell, idx) => ({ cell, idx }))
-                            .filter(item => item.cell && !item.cell.isUnit && item.cell.type !== 'Meclis');
-
-                        if (destructibleBuildings.length > 0) {
-                            const randomBuilding = destructibleBuildings[Math.floor(Math.random() * destructibleBuildings.length)];
-                            const slotIdx = randomBuilding.idx;
-                            const bName = randomBuilding.cell.type;
-                            const bGarrison = randomBuilding.cell.garrison ? [...randomBuilding.cell.garrison] : [];
-
-                            // Destroy
-                            target.grid[slotIdx] = null;
-                            this.log(`💣 TERÖR JOKERİ! ${player.name}, ${target.name}'in ${bName} binasını havaya uçurdu! (-2 DP)`);
-
-                            // If Kışla, trigger salvage
-                            if (bName === 'Kışla') {
-                                this.log(`🏚️ Yıkılan Kışla'dan askerler kaçışıyor...`);
-                                this.handleBarracksDestruction(player, target, bGarrison);
-                            }
-                        } else {
-                            this.log(`⚠️ TERÖR JOKERİ ETKİSİZ! ${target.name}'in yıkılacak binası yok!`);
-                            // Refund? No, card used.
-                        }
-                        break;
-
-                    case 'white_flag': // Beyaz Bayrak - Peace protection
-                        const duration = card.duration || 1;
-                        player.whiteFlagTurns = duration;
-                        this.log(`🏳️ BEYAZ BAYRAK! ${player.name}, ${duration} tur boyunca saldırıya karşı korunuyor!`);
-                        break;
-
-                    case 'assassination': // Suikast - End-game card
-                        // Requirement checks
-                        const totalSoldiers = player.grid.filter(c => c && c.isUnit).length +
-                            player.grid.reduce((sum, c) => sum + (c?.garrison?.length || 0), 0);
-
-                        if (totalSoldiers <= 20) {
-                            this.log(`❌ SUIKAST BAŞARISIZ! ${player.name} yeterli askere sahip değil! (${totalSoldiers}/20)`);
-                            player.hand.push(card);
-                            player.actionsRemaining += 1;
-                            player.dp -= card.dp || 0;
-                            return { success: false, msg: `En az 20 asker gerekli! (Mevcut: ${totalSoldiers})` };
-                        }
-
-                        if (player.technologies.military < 3) {
-                            this.log(`❌ SUIKAST BAŞARISIZ! ${player.name} yeterli askeri teknolojiye sahip değil!`);
-                            player.hand.push(card);
-                            player.actionsRemaining += 1;
-                            player.dp -= card.dp || 0;
-                            return { success: false, msg: 'Silah III veya IV teknolojisi gerekli!' };
-                        }
-
-                        const hasHighTech = Object.values(player.technologies).some(level => level >= 3);
-                        if (!hasHighTech) {
-                            this.log(`❌ SUIKAST BAŞARISIZ! ${player.name} yeterli teknolojiye sahip değil!`);
-                            player.hand.push(card);
-                            player.actionsRemaining += 1;
-                            player.dp -= card.dp || 0;
-                            return { success: false, msg: 'En az bir Lv3 veya Lv4 teknoloji gerekli!' };
-                        }
-
-                        // Dice roll for assassination attempt
-                        const attackerMilitaryPower = this.calculateMilitary(player);
-                        const attackerRoll = Math.floor(Math.random() * 6) + 1;
-                        const defenderRoll = Math.floor(Math.random() * 6) + 1;
-
-                        const targetMeclis = target.grid[0];
-                        const garrisonBonus = targetMeclis?.garrison?.length || 0;
-
-                        const attackerScore = attackerRoll + player.dp + Math.floor(attackerMilitaryPower / 5);
-                        const defenderScore = defenderRoll + target.dp + (garrisonBonus * 2) + 6;
-
-                        this.log(`🗡️ SUİKAST GİRİŞİMİ! ${player.name} → ${target.name}`);
-                        this.log(`Saldırı: ${attackerScore} (Zar:${attackerRoll} + DP:${player.dp} + Güç:${Math.floor(attackerMilitaryPower / 5)})`);
-                        this.log(`Savunma: ${defenderScore} (Zar:${defenderRoll} + DP:${target.dp} + Garnizon:${garrisonBonus * 2} + Bonus:6)`);
-
-                        if (attackerScore > defenderScore) {
-                            // Success - kill 2 civilians from Meclis
-                            if (targetMeclis && targetMeclis.garrison) {
-                                const killed = Math.min(2, targetMeclis.garrison.length);
-                                targetMeclis.garrison.splice(0, killed);
-
-                                target.dp = Math.max(1, target.dp - 5);
-                                player.dp += 3;
-
-                                this.log(`✅ SUİKAST BAŞARILI! ${killed} sivil öldürüldü!`);
-                                this.log(`${target.name}: -5 DP, ${player.name}: +3 DP`);
-
-                                // Check Meclis health
-                                this.checkMeclisHealth(target);
-                            }
-                        } else {
-                            // Failure - penalties
-                            player.dp = Math.max(1, player.dp - 6);
-                            player.gold = Math.max(0, player.gold - 10);
-                            target.dp += 2;
-
-                            this.log(`❌ SUİKAST BAŞARISIZ! Suikastçı yakalandı!`);
-                            this.log(`${player.name}: -6 DP, -10 Altın | ${target.name}: +2 DP`);
-                        }
-                        break;
-
-                    default:
-                        this.log(`⚠️ Bilinmeyen Diplomasi Kartı: ${card.effect} `);
-                }
+        for (let i = 0; i < missingCivils; i++) {
+            // Try to use DP first (1 DP per civilian)
+            if (p.dp >= 1) {
+                p.dp -= 1;
+                meclis.garrison.push({ name: 'Sivil', type: 'Nüfus', power: 0 });
+                restored++;
+                usedDP++;
+            }
+            // Then try Gold (2 Gold per civilian)
+            else if (p.gold >= 2) {
+                p.gold -= 2;
+                meclis.garrison.push({ name: 'Sivil', type: 'Nüfus', power: 0 });
+                restored++;
+                usedGold += 2;
+            }
+            // Cannot afford restoration
+            else {
+                break;
             }
         }
 
-        this.checkAutoEndTurn();
-        return { success: true, needsTarget: card.effect && card.effect !== 'gold_boost' && card.effect !== 'military_boost' };
-    }
-
-    // TECHNOLOGY
-    playTechnologyCard(handIndex, techType = null) {
-        const player = this.getActivePlayer();
-
-        if (player.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
-
-        const card = player.hand[handIndex];
-        if (!card || card.type !== 'Teknoloji') return { success: false, msg: "Geçersiz kart!" };
-
-        // 1. Science Center Requirement (Building must exist)
-        const hasScienceCenter = player.grid.some(cell => cell && cell.type === 'Bilim Merkezi');
-        if (!hasScienceCenter) {
-            return { success: false, msg: "Teknoloji geliştirmek için 'Bilim Merkezi' binasına sahip olmalısınız!" };
+        // Log restoration
+        if (restored > 0) {
+            let costMsg = '';
+            if (usedDP > 0 && usedGold > 0) {
+                costMsg = `(-${usedDP} DP, -${usedGold} Altın)`;
+            } else if (usedDP > 0) {
+                costMsg = `(-${usedDP} DP)`;
+            } else if (usedGold > 0) {
+                costMsg = `(-${usedGold * 2} Altın)`;
+            }
+            this.log(`🏛️ ${p.name} Meclisi onarıldı! +${restored} sivil ${costMsg}`);
         }
 
-        // Check available scientists in Science Centers
-        let totalScientists = 0;
-        player.grid.forEach(cell => {
-            if (cell && cell.type === 'Bilim Merkezi' && cell.garrison) {
-                totalScientists += cell.garrison.length;
-            }
-        });
-
-        if (totalScientists < card.popCost) {
-            return { success: false, msg: `Yetersiz Bilim İnsanı! ${card.popCost} Bilim İnsanı gerekli. (Mevcut: ${totalScientists})` };
-        }
-
-        let targetTechType = card.techType;
-        let targetLevel = card.level;
-
-        // Special handling for Joker card
-        if (card.isJoker) {
-            // Options
-            const techOptions = [
-                { type: 'military', name: 'Silah (Askeri Güç)', currentLevel: player.technologies.military },
-                { type: 'defense', name: 'Savunma (Bina HP)', currentLevel: player.technologies.defense },
-                { type: 'commerce', name: 'Ticaret (Pazar Geliri)', currentLevel: player.technologies.commerce }
-            ];
-
-            // Filter out maxed techs (level 4)
-            const availableTechs = techOptions.filter(t => t.currentLevel < 4);
-
-            if (availableTechs.length === 0) {
-                return { success: false, msg: "Tüm teknolojilerin maksimum seviyede!" };
-            }
-
-            // If techType is null, UI needs to ask user
-            if (!techType) {
-                return {
-                    success: false,
-                    msg: "JOKER_SELECTION_NEEDED",
-                    availableTechs: availableTechs,
-                    cardIndex: handIndex
-                };
-            }
-
-            // Verify selection
-            const selected = availableTechs.find(t => t.type === techType);
-            if (!selected) {
-                return { success: false, msg: "Geçersiz teknoloji seçimi!" };
-            }
-
-            targetTechType = selected.type;
-            targetLevel = selected.currentLevel + 1;
-        } else {
-            // Regular tech card - check if player already has this level or higher
-            const currentLevel = player.technologies[card.techType];
-            if (currentLevel >= card.level) {
-                return { success: false, msg: "Bu teknolojiye zaten sahipsin!" };
-            }
-        }
-
-        // Consume population (Scientists) from Science Centers
-        let remaining = card.popCost;
-
-        for (let cell of player.grid) {
-            if (remaining <= 0) break;
-            if (cell && cell.type === 'Bilim Merkezi' && cell.garrison && cell.garrison.length > 0) {
-                const scientistsToRemove = Math.min(remaining, cell.garrison.length);
-                cell.garrison.splice(0, scientistsToRemove);
-                remaining -= scientistsToRemove;
-            }
-        }
-
-        player.actionsRemaining -= 1;
-
-        // Apply technology
-        player.technologies[targetTechType] = targetLevel;
-
-        // Remove card from hand
-        player.hand.splice(handIndex, 1);
-
-        const techName = card.isJoker ? `${targetTechType} Lv${targetLevel} ` : card.name;
-        this.log(`${player.name}, ${techName} araştırdı!`);
-
-        // Clean up deck from old tech levels
-        this.cleanupMarketDeck();
-
-        this.checkAutoEndTurn();
-        return { success: true };
-    }
-
-    /**
-     * Removes technology cards from current deck that are no longer needed
-     * (Lower or equal to current levels of all players)
-     */
-    cleanupMarketDeck() {
-        if (!this.market || this.market.length === 0) return;
-
-        // Collect max levels for each tech type across all players
-        const maxLevels = { food: 0, military: 0, defense: 0, commerce: 0 };
-        this.players.forEach(p => {
-            for (let type in p.technologies) {
-                maxLevels[type] = Math.max(maxLevels[type], p.technologies[type]);
-            }
-        });
-
-        // Filter market deck
-        const originalCount = this.market.length;
-        this.market = this.market.filter(c => {
-            if (c.type !== 'Teknoloji') return true;
-            if (c.isJoker) return true; // Keep Jokers
-
-            // Check if ANY player could still use this card (level >= playerLevel + 1)
-            // Actually, if we want to be strict for the ACTIVE player, we might hide them,
-            // but for the deck we only remove if NOBODY can ever use it.
-            return this.players.some(p => {
-                const current = p.technologies[c.techType];
-                return c.level === current + 1;
-            });
-        });
-
-        if (this.market.length < originalCount) {
-            console.log(`🧹 Market temizlendi: ${originalCount - this.market.length} eski teknoloji kartı kaldırıldı.`);
+        // Warn if still missing civilians
+        const stillMissing = 3 - meclis.garrison.length;
+        if (stillMissing > 0) {
+            this.log(`⚠️ ${p.name} Meclisi zayıf! ${stillMissing} sivil eksik (DP veya Altın yetersiz)`);
         }
     }
 
-    proposeAlliance(targetPlayerId) {
-        const proposer = this.getActivePlayer();
+    // Game over check
+    if (meclis.garrison.length === 0) {
+        this.log(`☠️ ${p.name} KRAL ÖLDÜ! Meclis savunmasız!`);
+    }
+}
+
+// 6. Capacity Check (Food Limit)
+this.checkCapacity(p);
+    }
+
+getTotalGold() {
+    // Return total earned gold (starting + all income), not current gold
+    return this.players.reduce((sum, p) => sum + p.totalGoldEarned, 0);
+}
+
+getGoldCap() {
+    // Per-player gold cap (not global pool)
+    return 65;
+}
+
+getCapacityInfo(player) {
+    // Base Capacity = 3 (Meclis) + (Barracks * 15)
+    // Farms DO NOT count. Garrison Soldiers DO NOT count towards capacity.
+    const barracks = player.grid.filter(c => c && c.type === 'Kışla').length;
+
+    let baseCapacity = 3 + (barracks * 15);
+
+    // Apply Food Technology Multiplier
+    const foodTech = player.technologies.food;
+    const techMultipliers = [1, 1.5, 3, 4.5, 6];
+    const capacity = Math.floor(baseCapacity * techMultipliers[foodTech]);
+
+    // Total Units = Pop (Civilians + Units on Grid + Garrison Soldiers)
+    let armyCount = player.grid.filter(c => c && c.isUnit).length;
+
+    // Count civilians in Meclis (assuming 1 Meclis per player, usually counts as 3 pop base if player.pop is 0)
+    let basePop = player.pop > 0 ? player.pop : 3;
+
+    // Calculate Garrison Soldiers (needed for Total Pop, but not Capacity)
+    const garrisonSoldiers = player.grid.reduce((sum, c) => {
+        if (c && c.type === 'Kışla' && c.garrison) {
+            return sum + c.garrison.length;
+        }
+        return sum;
+    }, 0);
+
+    // Total Population = Base (Civilians) + Army on Grid + Garrison Soldiers
+    let totalPop = basePop + armyCount + garrisonSoldiers;
+
+    return { capacity, totalPop };
+}
+
+checkCapacity(player) {
+    const { capacity, totalPop } = this.getCapacityInfo(player);
+
+    if (totalPop > capacity) {
+        const excess = totalPop - capacity;
+        this.log(`🛑 ${player.name} GIDA KITLIĞI! Kapasite: ${capacity}, Nüfus: ${totalPop}`);
+
+        // Return soldiers to mercenary pool instead of killing them
+        let returned = 0;
+        for (let i = 0; i < player.grid.length; i++) {
+            if (returned >= excess) break;
+            if (player.grid[i] && player.grid[i].isUnit) {
+                const soldier = player.grid[i];
+                this.log(`🔄 Havuza döndü: ${soldier.type}`);
+
+                // Add to mercenary pool with original card properties
+                this.mercenaryPool.push({
+                    id: `merc-${Date.now()}-${i}`,
+                    name: soldier.type,
+                    cost: soldier.type === 'Piyade' ? 2 : soldier.type === 'Okçu' ? 3 : 4,
+                    type: 'Asker',
+                    power: soldier.power || (soldier.type === 'Piyade' ? 2 : soldier.type === 'Okçu' ? 3 : 4),
+                    isPoolSoldier: true
+                });
+
+                player.grid[i] = null;
+                returned++;
+            }
+        }
+
+        if (returned > 0) {
+            this.log(`♻️ ${returned} asker havuza eklendi. Pazarda satılacak.`);
+        }
+    }
+}
+
+// --- BARRACKS DESTRUCTION & MERCENARY SYSTEM ---
+
+handleBarracksDestruction(attacker, defender, garrison) {
+    if (!garrison || garrison.length === 0) return;
+
+    const totalSoldiers = garrison.length;
+    const halfCount = Math.floor(totalSoldiers / 2);
+
+    // Attacker gets half
+    const attackerShare = garrison.slice(0, halfCount);
+    // User said "50% attacker, 50% defender". Let's give remainder to defender.
+    const defenderShare = garrison.slice(halfCount);
+
+    this.log(`⚖️ Asker Paylaşımı: ${attacker.name} (${attackerShare.length}), ${defender.name} (${defenderShare.length})`);
+
+    // Distribute or Sell
+    if (attackerShare.length > 0) this.distributeOrSellSoldiers(attacker, attackerShare, 'attacker');
+    if (defenderShare.length > 0) this.distributeOrSellSoldiers(defender, defenderShare, 'defender');
+}
+
+distributeOrSellSoldiers(player, soldiers, role) {
+    // 1. Try to fill existing Barracks
+    const barracksList = player.grid.filter(c => c && c.type === 'Kışla');
+    const remainingSoldiers = [];
+
+    for (const soldier of soldiers) {
+        let placed = false;
+        for (const barracks of barracksList) {
+            if (!barracks.garrison) barracks.garrison = [];
+            if (barracks.garrison.length < 15) {
+                barracks.garrison.push(soldier);
+                placed = true;
+                break;
+            }
+        }
+        if (!placed) {
+            remainingSoldiers.push(soldier);
+        }
+    }
+
+    const placedCount = soldiers.length - remainingSoldiers.length;
+    if (placedCount > 0) {
+        const verb = role === 'attacker' ? 'katıldı' : 'sığındı';
+        this.log(`➡️ ${placedCount} asker ${player.name} ordusuna ${verb}.`);
+    }
+
+    // 2. Sell Overflow to Market as Mercenary Card
+    if (remainingSoldiers.length > 0) {
+        const count = remainingSoldiers.length;
+        const cost = this.calculateMercenaryCost(count);
+
+        const mercenaryCard = {
+            id: 'merc_' + Date.now() + '_' + Math.random(),
+            type: 'Paralı Asker',
+            name: `Paralı Asker (${count})`,
+            count: count,
+            soldiers: remainingSoldiers,
+            cost: cost,
+            description: `${count} adet tecrübeli asker.`
+        };
+
+        if (!this.openMarket) this.openMarket = [];
+        this.openMarket.push(mercenaryCard);
+        this.log(`💰 ${count} asker sığacak yer bulamadı ve Paralı Asker olarak pazara düştü! (${cost} Altın)`);
+    }
+}
+
+calculateMercenaryCost(count) {
+    if (count <= 10) return 1;
+    if (count <= 20) return 2;
+    return 3; // 21-30+
+}
+
+playMercenaryCard(handIndex) {
+    const player = this.getActivePlayer();
+    if (player.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
+
+    const card = player.hand[handIndex];
+    if (!card || card.type !== 'Paralı Asker') return { success: false, msg: "Geçersiz kart!" };
+
+    // Try to place soldiers
+    const soldiers = card.soldiers;
+    const barracksList = player.grid.filter(c => c && c.type === 'Kışla');
+    let placedCount = 0;
+
+    for (const soldier of soldiers) {
+        for (const barracks of barracksList) {
+            if (!barracks.garrison) barracks.garrison = [];
+            if (barracks.garrison.length < 15) {
+                barracks.garrison.push(soldier);
+                placedCount++;
+                break;
+            }
+        }
+    }
+
+    if (placedCount === 0) {
+        return { success: false, msg: "Kışlalarda hiç yer yok!" };
+    }
+
+    // Action cost
+    player.actionsRemaining -= 1;
+    player.hand.splice(handIndex, 1);
+
+    this.log(`⚔️ ${player.name}, ${placedCount} paralı askeri ordusuna kattı!`);
+
+    if (placedCount < soldiers.length) {
+        this.log(`⚠️ ${soldiers.length - placedCount} asker yer bulamadığı için dağıldı.`);
+    }
+
+    this.checkAutoEndTurn();
+    return { success: true };
+}
+
+// DIPLOMACY
+playDiplomacyCard(handIndex, targetPlayerId = null) {
+    const player = this.getActivePlayer();
+    if (player.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
+
+    const card = player.hand[handIndex];
+    if (!card || card.type !== 'Diplomasi') return { success: false, msg: "Geçersiz kart!" };
+
+    // Validate target BEFORE consuming action (for cards that need target)
+    if (card.effect && card.effect !== 'gold_boost' && card.effect !== 'military_boost' && card.effect !== 'white_flag') {
+        if (!targetPlayerId) return { success: false, msg: "Bu kart için bir hedef seçmelisin!" };
         const target = this.players.find(p => p.id === targetPlayerId);
-        if (proposer.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
-        if (proposer.id === target.id) return { success: false, msg: "Kendinle ittifak kuramazsın!" };
-        if (proposer.allianceWith !== null) return { success: false, msg: "Zaten bir ittifakın var!" };
-        if (target.allianceWith !== null) return { success: false, msg: "Hedefin zaten müttefiki var!" };
-
-        // Rule: Cannot propose if DP is equal
-        if (proposer.dp === target.dp) return { success: false, msg: "Eşit DP ile teklif edilemez!" };
-
-        // Rule: Vassals cannot form alliances
-        if (proposer.isVassal || target.isVassal) return { success: false, msg: "Vasallar ittifak kuramaz!" };
-
-        // Rule: Last two independent players cannot form alliance
-        const independentPlayers = this.players.filter(p => !p.isVassal);
-        if (independentPlayers.length === 2 && independentPlayers.includes(proposer) && independentPlayers.includes(target)) {
-            return { success: false, msg: "Son iki bağımsız krallık ittifak kuramaz! Biri kazanmalı!" };
-        }
-
-
-        // Rule: Only higher DP can propose
-        if (proposer.dp < target.dp) {
-            return { success: false, msg: `❌ Sadece daha yüksek DP'li oyuncular ittifak teklif edebilir!\n\nSenin DP'n: ${proposer.dp} \n${target.name} DP: ${target.dp} \n\nİpucu: Diplomasi kartları oynayarak DP'ni artır.` };
-        }
-
-        proposer.actionsRemaining -= 1;
-
-        // High DP proposes to Low DP
-        // Target can refuse ONLY if militarily superior (3x stronger)
-        const proposerMilitary = this.calculateMilitary(proposer);
-        const targetMilitary = this.calculateMilitary(target);
-
-        if (targetMilitary >= proposerMilitary * 3) {
-            // Target is militarily superior - can refuse
-            this.log(`❌ ${target.name}, ${proposer.name}'in teklifini REDDETTİ! (Askeri üstünlük: ${targetMilitary} vs ${proposerMilitary})`);
-            return { success: true, msg: `Teklif reddedildi! ${target.name} askeri olarak çok güçlü.` };
-        } else {
-            // Must accept
-            proposer.allianceWith = target.id;
-            target.allianceWith = proposer.id;
-            this.log(`🤝 İTTİFAK! ${proposer.name} ⇄ ${target.name} (DP: ${proposer.dp} > ${target.dp})`);
-        }
-
-        this.checkAutoEndTurn();
-        return { success: true };
+        if (!target) return { success: false, msg: "Hedef bulunamadı!" };
     }
 
-    calculateMilitary(player) {
-        // Sum of all unit power on grid
-        let basePower = player.grid.reduce((sum, cell) => {
-            if (cell && cell.isUnit) {
-                let cellPower = cell.power || 0;
+    // NOW consume action (after validation)
+    player.actionsRemaining -= 1;
 
-                // Add garrison power (soldiers in unit garrisons)
-                if (cell.garrison && cell.garrison.length > 0) {
-                    const garrisonPower = cell.garrison.reduce((gSum, soldier) =>
-                        gSum + (soldier.power || 0), 0
+    // Gain DP
+    player.dp += card.dp || 0;
+
+    this.log(`${player.name}, ${card.name} oynadı! +${card.dp} DP`);
+
+    // Remove card from hand
+    player.hand.splice(handIndex, 1);
+    this.selectedCardIndex = null; // Clear selection
+
+    // Apply special effects
+    if (card.effect) {
+        if (card.effect === 'gold_boost') {
+            player.gold += 3;
+            player.totalGoldEarned += 3;
+            this.log(`💰 ${player.name}, +3 Altın kazandı!`);
+        } else if (card.effect === 'military_boost') {
+            player.militaryBoost = 3;
+            this.log(`⚔️ ${player.name}, **sonraki saldırısında** +3 güç bonusu kazandı!`);
+        } else {
+            // Target already validated above
+            const target = this.players.find(p => p.id === targetPlayerId);
+
+            switch (card.effect) {
+                case 'repair_building': // Mimari Onarım
+                    // Target: Kışla, Duvar, Çiftlik only (as requested)
+                    const allowedTypes = ['Kışla', 'Duvar', 'Çiftlik'];
+                    const maxHpValues = { 'Kışla': 6, 'Duvar': 6, 'Çiftlik': 5 };
+
+                    // Find damaged valid buildings
+                    const damagedBuildings = player.grid.filter(c =>
+                        c &&
+                        allowedTypes.includes(c.type) &&
+                        c.hp < maxHpValues[c.type]
                     );
-                    cellPower += garrisonPower;
-                }
 
-                return sum + cellPower;
+                    if (damagedBuildings.length === 0) {
+                        this.log(`⚠️ ONARIM BAŞARISIZ! ${player.name}'in onarılacak hasarlı binası (Kışla, Duvar, Çiftlik) yok!`);
+                        player.hand.push(card);
+                        player.actionsRemaining += 1;
+                        player.dp -= card.dp || 0;
+                        return { success: false, msg: "Onarılacak hasarlı bina yok!" };
+                    }
+
+                    // Repair the most damaged one (lowest HP relative to max? Or absolute?)
+                    // User strategy: Repair the one closest to death (lowest absolute HP)
+                    damagedBuildings.sort((a, b) => a.hp - b.hp);
+                    const targetBuilding = damagedBuildings[0];
+
+                    const oldHp = targetBuilding.hp;
+                    const targetMax = maxHpValues[targetBuilding.type];
+                    targetBuilding.hp = targetMax; // FULL REPAIR
+
+                    this.log(`🔨 MİMARİ ONARIM: ${player.name}, ${targetBuilding.type} binasını tamamen yeniledi! (${oldHp} -> ${targetBuilding.hp} HP)`);
+                    break;
+
+                case 'steal_card': // Casusluk
+                    if (target.hand.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * target.hand.length);
+                        const stolenCard = target.hand.splice(randomIndex, 1)[0];
+                        player.hand.push(stolenCard);
+                        this.log(`🕵️ CASUSLUK BAŞARILI! ${player.name}, ${target.name}'den "${stolenCard.name}" kartını çaldı!`);
+                    } else {
+                        this.log(`⚠️ CASUSLUK BAŞARISIZ! ${target.name}'in elinde kart yok!`);
+                    }
+                    break;
+
+                case 'steal_unit': // Propaganda
+                    const units = target.grid.map((cell, idx) => ({ cell, idx })).filter(item => item.cell && item.cell.isUnit);
+                    if (units.length > 0) {
+                        const randomUnit = units[Math.floor(Math.random() * units.length)];
+                        const emptySlots = player.grid.map((cell, idx) => ({ cell, idx })).filter(item => !item.cell);
+
+                        if (emptySlots.length > 0) {
+                            // Check Population Limit
+                            const { capacity, totalPop } = this.getCapacityInfo(player);
+                            if (totalPop + 1 > capacity) {
+                                this.log(`⚠️ PROPAGANDA BAŞARISIZ! ${player.name} nüfus limiti dolu! (${totalPop}/${capacity})`);
+                                break;
+                            }
+
+                            const targetSlot = emptySlots[0];
+                            const stolenUnitType = target.grid[randomUnit.idx].type;
+                            player.grid[targetSlot.idx] = target.grid[randomUnit.idx];
+                            target.grid[randomUnit.idx] = null;
+                            this.log(`🎭 PROPAGANDA BAŞARILI! ${player.name}, ${target.name}'den ${stolenUnitType} çaldı ve kendi ordusuna kattı!`);
+
+                            // Show propaganda success notification
+                            this.showPropagandaNotification({
+                                attacker: player.name,
+                                attackerColor: player.color,
+                                defender: target.name,
+                                defenderColor: target.color,
+                                unitName: stolenUnitType
+                            });
+                        } else {
+                            this.log(`⚠️ PROPAGANDA BAŞARISIZ! ${player.name}'in boş alanı yok, birim çalınamadı!`);
+                        }
+                    } else {
+                        this.log(`⚠️ PROPAGANDA BAŞARISIZ! ${target.name}'in askeri birimi yok!`);
+                    }
+                    break;
+
+                case 'break_alliance': // Nifak Tohumu - Break target's alliance
+                    // Check military requirement
+                    const playerMilitary = this.calculateMilitary(player);
+                    if (playerMilitary < (card.minMilitary || 20)) {
+                        this.log(`❌ NİFAK TOHUMU BAŞARISIZ! ${player.name} yeterli askeri güce sahip değil! (${playerMilitary}/20)`);
+                        player.hand.push(card);
+                        player.actionsRemaining += 1;
+                        player.dp -= card.dp || 0;
+                        return { success: false, msg: `En az 20 askeri güç gerekli! (Mevcut: ${playerMilitary})` };
+                    }
+
+                    // Check if target has an alliance
+                    if (!target.allianceWith) {
+                        this.log(`❌ NİFAK TOHUMU BAŞARISIZ! ${target.name}'in ittifakı yok!`);
+                        player.hand.push(card);
+                        player.actionsRemaining += 1;
+                        player.dp -= card.dp || 0;
+                        return { success: false, msg: `${target.name}'in ittifakı yok!` };
+                    }
+
+                    // Calculate success based on military power + DP
+                    const targetAlly = this.players.find(p => p.id === target.allianceWith);
+                    const attackerPower = playerMilitary + player.dp;
+                    const targetMilitary = this.calculateMilitary(target);
+                    const allyMilitary = this.calculateMilitary(targetAlly);
+                    const defenderPower = targetMilitary + target.dp + allyMilitary + targetAlly.dp;
+
+                    this.log(`⚔️ NİFAK TOHUMU: ${player.name} (Güç: ${attackerPower}) vs ${target.name}+${targetAlly.name} (Güç: ${defenderPower})`);
+
+                    if (attackerPower > defenderPower) {
+                        // Success - Break the alliance
+                        target.allianceWith = null;
+                        targetAlly.allianceWith = null;
+
+                        this.log(`✅ NİFAK TOHUMU BAŞARILI! ${player.name}, ${target.name} ile ${targetAlly.name} arasındaki ittifakı bozdu!`);
+                        this.log(`${target.name} ve ${targetAlly.name} artık müttefik değil!`);
+                    } else {
+                        // Failure - Card wasted, penalties
+                        player.dp = Math.max(1, player.dp - 2);
+                        target.dp += 1;
+                        targetAlly.dp += 1;
+
+                        this.log(`❌ NİFAK TOHUMU BAŞARISIZ! İttifak çok güçlü!`);
+                        this.log(`${player.name}: -2 DP | ${target.name}: +1 DP | ${targetAlly.name}: +1 DP`);
+                    }
+                    break;
+
+                case 'terror_joker': // Terör Jokeri
+                    // Requirement: 10 DP
+                    if (player.dp < 10) {
+                        this.log(`❌ TERÖR JOKERİ BAŞARISIZ! ${player.name} yeterli DP'ye sahip değil! (${player.dp}/10)`);
+                        player.hand.push(card);
+                        player.actionsRemaining += 1;
+                        // No DP cost if failed requirement? Or penalty? Usually just return card.
+                        return { success: false, msg: `En az 10 DP gerekli! (Mevcut: ${player.dp})` };
+                    }
+
+                    // Usage Cost: 2 DP
+                    player.dp = Math.max(0, player.dp - 2);
+
+                    // Target validation
+                    const terrorTarget = target.grid.map((cell, idx) => ({ cell, idx })).filter(item => item.cell && !item.cell.isUnit); // Buildings only
+
+                    // Specific target logic needed? 
+                    // Current `playDiplomacyCard` doesn't pass specific slot index, only player ID.
+                    // So we need to select a random building OR ask user to target a slot.
+                    // Since `playDiplomacyCard` structure assumes "Target Player", we will pick a RANDOM building for now or implementing targeting is complex.
+                    // Wait, `attackSlot` uses `targetSlotIndex`. `playDiplomacyCard` does NOT interact with grid clicks in the same way.
+                    // Renderer handles 'Diplomacy' with `needsTarget` by entering a mode?
+                    // Line 628 in renderer.js: `this.game.pendingDiplomacyCard = { cardIndex: index, card: card };`
+                    // This allows clicking a player card. It DOES NOT allow clicking a grid slot.
+
+                    // PROPOSAL: Terror Joker destroys a RANDOM building of the target player (excluding Meclis).
+                    // This fits the "Terror" theme (unpredictable/chaos) and existing UI constraints.
+
+                    const destructibleBuildings = target.grid
+                        .map((cell, idx) => ({ cell, idx }))
+                        .filter(item => item.cell && !item.cell.isUnit && item.cell.type !== 'Meclis');
+
+                    if (destructibleBuildings.length > 0) {
+                        const randomBuilding = destructibleBuildings[Math.floor(Math.random() * destructibleBuildings.length)];
+                        const slotIdx = randomBuilding.idx;
+                        const bName = randomBuilding.cell.type;
+                        const bGarrison = randomBuilding.cell.garrison ? [...randomBuilding.cell.garrison] : [];
+
+                        // Destroy
+                        target.grid[slotIdx] = null;
+                        this.log(`💣 TERÖR JOKERİ! ${player.name}, ${target.name}'in ${bName} binasını havaya uçurdu! (-2 DP)`);
+
+                        // If Kışla, trigger salvage
+                        if (bName === 'Kışla') {
+                            this.log(`🏚️ Yıkılan Kışla'dan askerler kaçışıyor...`);
+                            this.handleBarracksDestruction(player, target, bGarrison);
+                        }
+                    } else {
+                        this.log(`⚠️ TERÖR JOKERİ ETKİSİZ! ${target.name}'in yıkılacak binası yok!`);
+                        // Refund? No, card used.
+                    }
+                    break;
+
+                case 'white_flag': // Beyaz Bayrak - Peace protection
+                    const duration = card.duration || 1;
+                    player.whiteFlagTurns = duration;
+                    this.log(`🏳️ BEYAZ BAYRAK! ${player.name}, ${duration} tur boyunca saldırıya karşı korunuyor!`);
+                    break;
+
+                case 'assassination': // Suikast - End-game card
+                    // Requirement checks
+                    const totalSoldiers = player.grid.filter(c => c && c.isUnit).length +
+                        player.grid.reduce((sum, c) => sum + (c?.garrison?.length || 0), 0);
+
+                    if (totalSoldiers <= 20) {
+                        this.log(`❌ SUIKAST BAŞARISIZ! ${player.name} yeterli askere sahip değil! (${totalSoldiers}/20)`);
+                        player.hand.push(card);
+                        player.actionsRemaining += 1;
+                        player.dp -= card.dp || 0;
+                        return { success: false, msg: `En az 20 asker gerekli! (Mevcut: ${totalSoldiers})` };
+                    }
+
+                    if (player.technologies.military < 3) {
+                        this.log(`❌ SUIKAST BAŞARISIZ! ${player.name} yeterli askeri teknolojiye sahip değil!`);
+                        player.hand.push(card);
+                        player.actionsRemaining += 1;
+                        player.dp -= card.dp || 0;
+                        return { success: false, msg: 'Silah III veya IV teknolojisi gerekli!' };
+                    }
+
+                    const hasHighTech = Object.values(player.technologies).some(level => level >= 3);
+                    if (!hasHighTech) {
+                        this.log(`❌ SUIKAST BAŞARISIZ! ${player.name} yeterli teknolojiye sahip değil!`);
+                        player.hand.push(card);
+                        player.actionsRemaining += 1;
+                        player.dp -= card.dp || 0;
+                        return { success: false, msg: 'En az bir Lv3 veya Lv4 teknoloji gerekli!' };
+                    }
+
+                    // Dice roll for assassination attempt
+                    const attackerMilitaryPower = this.calculateMilitary(player);
+                    const attackerRoll = Math.floor(Math.random() * 6) + 1;
+                    const defenderRoll = Math.floor(Math.random() * 6) + 1;
+
+                    const targetMeclis = target.grid[0];
+                    const garrisonBonus = targetMeclis?.garrison?.length || 0;
+
+                    const attackerScore = attackerRoll + player.dp + Math.floor(attackerMilitaryPower / 5);
+                    const defenderScore = defenderRoll + target.dp + (garrisonBonus * 2) + 6;
+
+                    this.log(`🗡️ SUİKAST GİRİŞİMİ! ${player.name} → ${target.name}`);
+                    this.log(`Saldırı: ${attackerScore} (Zar:${attackerRoll} + DP:${player.dp} + Güç:${Math.floor(attackerMilitaryPower / 5)})`);
+                    this.log(`Savunma: ${defenderScore} (Zar:${defenderRoll} + DP:${target.dp} + Garnizon:${garrisonBonus * 2} + Bonus:6)`);
+
+                    if (attackerScore > defenderScore) {
+                        // Success - kill 2 civilians from Meclis
+                        if (targetMeclis && targetMeclis.garrison) {
+                            const killed = Math.min(2, targetMeclis.garrison.length);
+                            targetMeclis.garrison.splice(0, killed);
+
+                            target.dp = Math.max(1, target.dp - 5);
+                            player.dp += 3;
+
+                            this.log(`✅ SUİKAST BAŞARILI! ${killed} sivil öldürüldü!`);
+                            this.log(`${target.name}: -5 DP, ${player.name}: +3 DP`);
+
+                            // Check Meclis health
+                            this.checkMeclisHealth(target);
+                        }
+                    } else {
+                        // Failure - penalties
+                        player.dp = Math.max(1, player.dp - 6);
+                        player.gold = Math.max(0, player.gold - 10);
+                        target.dp += 2;
+
+                        this.log(`❌ SUİKAST BAŞARISIZ! Suikastçı yakalandı!`);
+                        this.log(`${player.name}: -6 DP, -10 Altın | ${target.name}: +2 DP`);
+                    }
+                    break;
+
+                default:
+                    this.log(`⚠️ Bilinmeyen Diplomasi Kartı: ${card.effect} `);
             }
-            return sum;
-        }, 0);
+        }
+    }
 
-        // Add barracks garrison power
-        player.grid.forEach(cell => {
-            if (cell && cell.type === 'Kışla' && cell.garrison && cell.garrison.length > 0) {
-                const barracksGarrisonPower = cell.garrison.reduce((gSum, soldier) =>
+    this.checkAutoEndTurn();
+    return { success: true, needsTarget: card.effect && card.effect !== 'gold_boost' && card.effect !== 'military_boost' };
+}
+
+// TECHNOLOGY
+playTechnologyCard(handIndex, techType = null) {
+    const player = this.getActivePlayer();
+
+    if (player.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
+
+    const card = player.hand[handIndex];
+    if (!card || card.type !== 'Teknoloji') return { success: false, msg: "Geçersiz kart!" };
+
+    // 1. Science Center Requirement (Building must exist)
+    const hasScienceCenter = player.grid.some(cell => cell && cell.type === 'Bilim Merkezi');
+    if (!hasScienceCenter) {
+        return { success: false, msg: "Teknoloji geliştirmek için 'Bilim Merkezi' binasına sahip olmalısınız!" };
+    }
+
+    // Check available scientists in Science Centers
+    let totalScientists = 0;
+    player.grid.forEach(cell => {
+        if (cell && cell.type === 'Bilim Merkezi' && cell.garrison) {
+            totalScientists += cell.garrison.length;
+        }
+    });
+
+    if (totalScientists < card.popCost) {
+        return { success: false, msg: `Yetersiz Bilim İnsanı! ${card.popCost} Bilim İnsanı gerekli. (Mevcut: ${totalScientists})` };
+    }
+
+    let targetTechType = card.techType;
+    let targetLevel = card.level;
+
+    // Special handling for Joker card
+    if (card.isJoker) {
+        // Options
+        const techOptions = [
+            { type: 'military', name: 'Silah (Askeri Güç)', currentLevel: player.technologies.military },
+            { type: 'defense', name: 'Savunma (Bina HP)', currentLevel: player.technologies.defense },
+            { type: 'commerce', name: 'Ticaret (Pazar Geliri)', currentLevel: player.technologies.commerce }
+        ];
+
+        // Filter out maxed techs (level 4)
+        const availableTechs = techOptions.filter(t => t.currentLevel < 4);
+
+        if (availableTechs.length === 0) {
+            return { success: false, msg: "Tüm teknolojilerin maksimum seviyede!" };
+        }
+
+        // If techType is null, UI needs to ask user
+        if (!techType) {
+            return {
+                success: false,
+                msg: "JOKER_SELECTION_NEEDED",
+                availableTechs: availableTechs,
+                cardIndex: handIndex
+            };
+        }
+
+        // Verify selection
+        const selected = availableTechs.find(t => t.type === techType);
+        if (!selected) {
+            return { success: false, msg: "Geçersiz teknoloji seçimi!" };
+        }
+
+        targetTechType = selected.type;
+        targetLevel = selected.currentLevel + 1;
+    } else {
+        // Regular tech card - check if player already has this level or higher
+        const currentLevel = player.technologies[card.techType];
+        if (currentLevel >= card.level) {
+            return { success: false, msg: "Bu teknolojiye zaten sahipsin!" };
+        }
+    }
+
+    // Consume population (Scientists) from Science Centers
+    let remaining = card.popCost;
+
+    for (let cell of player.grid) {
+        if (remaining <= 0) break;
+        if (cell && cell.type === 'Bilim Merkezi' && cell.garrison && cell.garrison.length > 0) {
+            const scientistsToRemove = Math.min(remaining, cell.garrison.length);
+            cell.garrison.splice(0, scientistsToRemove);
+            remaining -= scientistsToRemove;
+        }
+    }
+
+    player.actionsRemaining -= 1;
+
+    // Apply technology
+    player.technologies[targetTechType] = targetLevel;
+
+    // Remove card from hand
+    player.hand.splice(handIndex, 1);
+
+    const techName = card.isJoker ? `${targetTechType} Lv${targetLevel} ` : card.name;
+    this.log(`${player.name}, ${techName} araştırdı!`);
+
+    // Clean up deck from old tech levels
+    this.cleanupMarketDeck();
+
+    this.checkAutoEndTurn();
+    return { success: true };
+}
+
+/**
+ * Removes technology cards from current deck that are no longer needed
+ * (Lower or equal to current levels of all players)
+ */
+cleanupMarketDeck() {
+    if (!this.market || this.market.length === 0) return;
+
+    // Collect max levels for each tech type across all players
+    const maxLevels = { food: 0, military: 0, defense: 0, commerce: 0 };
+    this.players.forEach(p => {
+        for (let type in p.technologies) {
+            maxLevels[type] = Math.max(maxLevels[type], p.technologies[type]);
+        }
+    });
+
+    // Filter market deck
+    const originalCount = this.market.length;
+    this.market = this.market.filter(c => {
+        if (c.type !== 'Teknoloji') return true;
+        if (c.isJoker) return true; // Keep Jokers
+
+        // Check if ANY player could still use this card (level >= playerLevel + 1)
+        // Actually, if we want to be strict for the ACTIVE player, we might hide them,
+        // but for the deck we only remove if NOBODY can ever use it.
+        return this.players.some(p => {
+            const current = p.technologies[c.techType];
+            return c.level === current + 1;
+        });
+    });
+
+    if (this.market.length < originalCount) {
+        console.log(`🧹 Market temizlendi: ${originalCount - this.market.length} eski teknoloji kartı kaldırıldı.`);
+    }
+}
+
+proposeAlliance(targetPlayerId) {
+    const proposer = this.getActivePlayer();
+    const target = this.players.find(p => p.id === targetPlayerId);
+    if (proposer.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
+    if (proposer.id === target.id) return { success: false, msg: "Kendinle ittifak kuramazsın!" };
+    if (proposer.allianceWith !== null) return { success: false, msg: "Zaten bir ittifakın var!" };
+    if (target.allianceWith !== null) return { success: false, msg: "Hedefin zaten müttefiki var!" };
+
+    // Rule: Cannot propose if DP is equal
+    if (proposer.dp === target.dp) return { success: false, msg: "Eşit DP ile teklif edilemez!" };
+
+    // Rule: Vassals cannot form alliances
+    if (proposer.isVassal || target.isVassal) return { success: false, msg: "Vasallar ittifak kuramaz!" };
+
+    // Rule: Last two independent players cannot form alliance
+    const independentPlayers = this.players.filter(p => !p.isVassal);
+    if (independentPlayers.length === 2 && independentPlayers.includes(proposer) && independentPlayers.includes(target)) {
+        return { success: false, msg: "Son iki bağımsız krallık ittifak kuramaz! Biri kazanmalı!" };
+    }
+
+
+    // Rule: Only higher DP can propose
+    if (proposer.dp < target.dp) {
+        return { success: false, msg: `❌ Sadece daha yüksek DP'li oyuncular ittifak teklif edebilir!\n\nSenin DP'n: ${proposer.dp} \n${target.name} DP: ${target.dp} \n\nİpucu: Diplomasi kartları oynayarak DP'ni artır.` };
+    }
+
+    proposer.actionsRemaining -= 1;
+
+    // High DP proposes to Low DP
+    // Target can refuse ONLY if militarily superior (3x stronger)
+    const proposerMilitary = this.calculateMilitary(proposer);
+    const targetMilitary = this.calculateMilitary(target);
+
+    if (targetMilitary >= proposerMilitary * 3) {
+        // Target is militarily superior - can refuse
+        this.log(`❌ ${target.name}, ${proposer.name}'in teklifini REDDETTİ! (Askeri üstünlük: ${targetMilitary} vs ${proposerMilitary})`);
+        return { success: true, msg: `Teklif reddedildi! ${target.name} askeri olarak çok güçlü.` };
+    } else {
+        // Must accept
+        proposer.allianceWith = target.id;
+        target.allianceWith = proposer.id;
+        this.log(`🤝 İTTİFAK! ${proposer.name} ⇄ ${target.name} (DP: ${proposer.dp} > ${target.dp})`);
+    }
+
+    this.checkAutoEndTurn();
+    return { success: true };
+}
+
+calculateMilitary(player) {
+    // Sum of all unit power on grid
+    let basePower = player.grid.reduce((sum, cell) => {
+        if (cell && cell.isUnit) {
+            let cellPower = cell.power || 0;
+
+            // Add garrison power (soldiers in unit garrisons)
+            if (cell.garrison && cell.garrison.length > 0) {
+                const garrisonPower = cell.garrison.reduce((gSum, soldier) =>
                     gSum + (soldier.power || 0), 0
                 );
-                basePower += barracksGarrisonPower;
+                cellPower += garrisonPower;
             }
-        });
 
-        // STEP 1: Diversity Bonus FIRST (+20% if has all 3 soldier types + barracks)
-        const soldierTypes = new Set();
-        let hasBarracks = false;
-
-        player.grid.forEach(cell => {
-            if (cell && cell.isUnit && cell.name) {
-                soldierTypes.add(cell.name);
-            }
-            if (cell && cell.type === 'Kışla') {
-                hasBarracks = true;
-            }
-        });
-
-        const hasAllTypes = soldierTypes.has('Piyade') &&
-            soldierTypes.has('Okçu') &&
-            soldierTypes.has('Süvari') &&
-            hasBarracks;
-
-        if (hasAllTypes) {
-            basePower = Math.floor(basePower * 1.2); // +20% bonus BEFORE tech
+            return sum + cellPower;
         }
+        return sum;
+    }, 0);
 
-        // STEP 2: Apply Military Technology Multiplier (BALANCED)
-        const militaryTech = player.technologies.military;
-        const techMultipliers = [1, 1.2, 1.5, 2, 2.5]; // Balanced multipliers
-        basePower = Math.floor(basePower * techMultipliers[militaryTech]);
-
-        return basePower;
-    }
-
-    checkMeclisHealth(player) {
-        const meclis = player.grid[0];
-        if (!meclis || !meclis.garrison) return;
-
-        const civilCount = meclis.garrison.length;
-
-        if (civilCount === 2) {
-            meclis.hp = 7; // Reduced HP
-            this.log(`⚠️ ${player.name} Meclisi zayıfladı! (2 sivil kaldı)`);
-        } else if (civilCount === 1) {
-            meclis.hp = 5; // Critical HP
-            this.log(`🚨 ${player.name} KRİZ DURUMUNDA! (1 sivil kaldı)`);
-        } else if (civilCount === 0) {
-            meclis.hp = 3; // Defenseless
-            this.log(`☠️ ${player.name} KRAL ÖLDÜ! Meclis savunmasız!`);
+    // Add barracks garrison power
+    player.grid.forEach(cell => {
+        if (cell && cell.type === 'Kışla' && cell.garrison && cell.garrison.length > 0) {
+            const barracksGarrisonPower = cell.garrison.reduce((gSum, soldier) =>
+                gSum + (soldier.power || 0), 0
+            );
+            basePower += barracksGarrisonPower;
         }
-    }
+    });
 
-    breakAlliance() {
-        const player = this.getActivePlayer();
-        if (player.allianceWith === null) return { success: false, msg: "İttifakın yok!" };
-        if (player.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
+    // STEP 1: Diversity Bonus FIRST (+20% if has all 3 soldier types + barracks)
+    const soldierTypes = new Set();
+    let hasBarracks = false;
 
-        const ally = this.players.find(p => p.id === player.allianceWith);
-
-        // Penalty
-        player.dp = Math.max(1, player.dp - 2);
-        player.actionsRemaining -= 1;
-
-        // Bonus to loyal ally
-        ally.gold += 3;
-        ally.totalGoldEarned += 3; // Track total earned
-
-        // Break the alliance
-        player.allianceWith = null;
-        ally.allianceWith = null;
-
-        this.log(`💔 ${player.name}, ${ally.name} ile ittifakı bozdu! (-2 DP, ${ally.name} +3 Altın)`);
-        this.checkAutoEndTurn();
-        return { success: true };
-    }
-
-    // TECHNOLOGY
-
-    donateToVassal(targetPlayerId, donationType, amount) {
-        const player = this.getActivePlayer();
-        const target = this.players.find(p => p.id === targetPlayerId);
-
-        if (player.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
-        if (!target) return { success: false, msg: "Hedef bulunamadı!" };
-        if (!target.isVassal) return { success: false, msg: "Hedef vasal değil!" };
-        if (player.isVassal) return { success: false, msg: "Vasallar bağış yapamaz!" };
-        if (target.masterId === player.id) return { success: false, msg: "Kendi vasalına bağış yapamazsın!" };
-
-        player.actionsRemaining -= 1;
-
-        if (donationType === 'gold') {
-            if (player.gold < amount) return { success: false, msg: "Yetersiz altın!" };
-            player.gold -= amount;
-            target.gold += amount;
-            this.log(`🎁 ${player.name}, ${target.name}'e ${amount} Altın bağışladı!`);
-        } else if (donationType === 'unit') {
-            // Transfer a unit from player's grid to target's grid
-            const units = player.grid.map((cell, idx) => ({ cell, idx })).filter(item => item.cell && item.cell.isUnit);
-            if (units.length === 0) return { success: false, msg: "Bağışlanacak asker yok!" };
-
-            const emptySlots = target.grid.map((cell, idx) => ({ cell, idx })).filter(item => !item.cell);
-            if (emptySlots.length === 0) return { success: false, msg: "Hedefin boş alanı yok!" };
-
-            // Transfer first unit
-            const unitToTransfer = units[0];
-            const targetSlot = emptySlots[0];
-
-            target.grid[targetSlot.idx] = player.grid[unitToTransfer.idx];
-            player.grid[unitToTransfer.idx] = null;
-
-            this.log(`🎁 ${player.name}, ${target.name}'e ${target.grid[targetSlot.idx].type} bağışladı!`);
+    player.grid.forEach(cell => {
+        if (cell && cell.isUnit && cell.name) {
+            soldierTypes.add(cell.name);
         }
+        if (cell && cell.type === 'Kışla') {
+            hasBarracks = true;
+        }
+    });
 
-        this.checkAutoEndTurn();
-        return { success: true };
+    const hasAllTypes = soldierTypes.has('Piyade') &&
+        soldierTypes.has('Okçu') &&
+        soldierTypes.has('Süvari') &&
+        hasBarracks;
+
+    if (hasAllTypes) {
+        basePower = Math.floor(basePower * 1.2); // +20% bonus BEFORE tech
     }
+
+    // STEP 2: Apply Military Technology Multiplier (BALANCED)
+    const militaryTech = player.technologies.military;
+    const techMultipliers = [1, 1.2, 1.5, 2, 2.5]; // Balanced multipliers
+    basePower = Math.floor(basePower * techMultipliers[militaryTech]);
+
+    return basePower;
+}
+
+checkMeclisHealth(player) {
+    const meclis = player.grid[0];
+    if (!meclis || !meclis.garrison) return;
+
+    const civilCount = meclis.garrison.length;
+
+    if (civilCount === 2) {
+        meclis.hp = 7; // Reduced HP
+        this.log(`⚠️ ${player.name} Meclisi zayıfladı! (2 sivil kaldı)`);
+    } else if (civilCount === 1) {
+        meclis.hp = 5; // Critical HP
+        this.log(`🚨 ${player.name} KRİZ DURUMUNDA! (1 sivil kaldı)`);
+    } else if (civilCount === 0) {
+        meclis.hp = 3; // Defenseless
+        this.log(`☠️ ${player.name} KRAL ÖLDÜ! Meclis savunmasız!`);
+    }
+}
+
+breakAlliance() {
+    const player = this.getActivePlayer();
+    if (player.allianceWith === null) return { success: false, msg: "İttifakın yok!" };
+    if (player.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
+
+    const ally = this.players.find(p => p.id === player.allianceWith);
+
+    // Penalty
+    player.dp = Math.max(1, player.dp - 2);
+    player.actionsRemaining -= 1;
+
+    // Bonus to loyal ally
+    ally.gold += 3;
+    ally.totalGoldEarned += 3; // Track total earned
+
+    // Break the alliance
+    player.allianceWith = null;
+    ally.allianceWith = null;
+
+    this.log(`💔 ${player.name}, ${ally.name} ile ittifakı bozdu! (-2 DP, ${ally.name} +3 Altın)`);
+    this.checkAutoEndTurn();
+    return { success: true };
+}
+
+// TECHNOLOGY
+
+donateToVassal(targetPlayerId, donationType, amount) {
+    const player = this.getActivePlayer();
+    const target = this.players.find(p => p.id === targetPlayerId);
+
+    if (player.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
+    if (!target) return { success: false, msg: "Hedef bulunamadı!" };
+    if (!target.isVassal) return { success: false, msg: "Hedef vasal değil!" };
+    if (player.isVassal) return { success: false, msg: "Vasallar bağış yapamaz!" };
+    if (target.masterId === player.id) return { success: false, msg: "Kendi vasalına bağış yapamazsın!" };
+
+    player.actionsRemaining -= 1;
+
+    if (donationType === 'gold') {
+        if (player.gold < amount) return { success: false, msg: "Yetersiz altın!" };
+        player.gold -= amount;
+        target.gold += amount;
+        this.log(`🎁 ${player.name}, ${target.name}'e ${amount} Altın bağışladı!`);
+    } else if (donationType === 'unit') {
+        // Transfer a unit from player's grid to target's grid
+        const units = player.grid.map((cell, idx) => ({ cell, idx })).filter(item => item.cell && item.cell.isUnit);
+        if (units.length === 0) return { success: false, msg: "Bağışlanacak asker yok!" };
+
+        const emptySlots = target.grid.map((cell, idx) => ({ cell, idx })).filter(item => !item.cell);
+        if (emptySlots.length === 0) return { success: false, msg: "Hedefin boş alanı yok!" };
+
+        // Transfer first unit
+        const unitToTransfer = units[0];
+        const targetSlot = emptySlots[0];
+
+        target.grid[targetSlot.idx] = player.grid[unitToTransfer.idx];
+        player.grid[unitToTransfer.idx] = null;
+
+        this.log(`🎁 ${player.name}, ${target.name}'e ${target.grid[targetSlot.idx].type} bağışladı!`);
+    }
+
+    this.checkAutoEndTurn();
+    return { success: true };
+}
 }
