@@ -1323,9 +1323,9 @@ export class Game {
             this.isCalculatingCombat = true;
             const { combatCalculator } = await import('./combatCalculator.js');
             await combatCalculator.showCombatCalculation(combatData);
-            this.isCalculatingCombat = false;
         } catch (error) {
             console.error('Failed to load combat calculator:', error);
+        } finally {
             this.isCalculatingCombat = false;
         }
     }
