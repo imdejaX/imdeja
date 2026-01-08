@@ -628,6 +628,14 @@ export class Game {
             return { success: false, msg: "Alan dolu!" };
         }
 
+        // Check Population Limit for Units
+        if (card.type === 'Asker') {
+            const { capacity, totalPop } = this.getCapacityInfo(player);
+            if (totalPop + 1 > capacity) {
+                return { success: false, msg: `Nüfus limiti aşıldı! (Mevcut: ${totalPop}/${capacity})` };
+            }
+        }
+
         // Place functionality
         player.grid[slotIndex] = { type: card.name, hp: card.hp || 3, power: card.power || 0, isUnit: card.type === 'Asker' };
         player.actionsRemaining -= 1;
@@ -1669,6 +1677,12 @@ export class Game {
     }
 
     calculatePlayerIncome(p) {
+        // Skip income on Turn 1 (Requested Feature)
+        if (this.turn === 1) {
+            this.log(`ℹ️ İlk turda gelir dağıtımı yapılmaz.`);
+            return;
+        }
+
         // Initialize Turn Report
         p.turnReport = {
             income: 0,
@@ -1768,14 +1782,14 @@ export class Game {
                     { name: 'Süvari', cost: 4, type: 'Asker', power: 4, hp: 5, isUnit: true }
                 ];
 
-                // Check capacity (max 20 soldiers - BALANCED)
-                if (cell.garrison.length < 20) {
+                // Check capacity (max 15 soldiers - UPDATED)
+                if (cell.garrison.length < 15) {
                     const randomSoldier = soldierTypes[Math.floor(Math.random() * soldierTypes.length)];
                     cell.garrison.push({ ...randomSoldier });
-                    this.log(`🏰 ${p.name}, Kışla'ya ${randomSoldier.name} eklendi! (Garnizon: ${cell.garrison.length}/20)`);
+                    this.log(`🏰 ${p.name}, Kışla'ya ${randomSoldier.name} eklendi! (Garnizon: ${cell.garrison.length}/15)`);
                     p.turnReport.newUnits.push(randomSoldier.name);
                 } else {
-                    this.log(`⚠️ ${p.name}'in Kışla'sı dolu! (20/20)`);
+                    this.log(`⚠️ ${p.name}'in Kışla'sı dolu! (15/15)`);
                 }
             }
 
@@ -1892,27 +1906,40 @@ export class Game {
         return 65;
     }
 
-    checkCapacity(player) {
-        // Base Capacity = 4 + (Barracks * 1) + (Farms * 5) + (Barracks Garrison Soldiers * 1)
+    getCapacityInfo(player) {
+        // Base Capacity = 3 (Meclis) + (Barracks * 15)
+        // Farms DO NOT count. Garrison Soldiers DO NOT count towards capacity.
         const barracks = player.grid.filter(c => c && c.type === 'Kışla').length;
-        const farms = player.grid.filter(c => c && c.type === 'Çiftlik').length;
-        // Only count soldiers in Kışla garrison, not Meclis civilians
-        const garrisonSoldiers = player.grid.reduce((sum, c) => {
-            if (c && c.type === 'Kışla' && c.garrison) {
-                return sum + c.garrison.length;
-            }
-            return sum;
-        }, 0);
-        let baseCapacity = 4 + barracks + (farms * 5) + garrisonSoldiers;
+
+        let baseCapacity = 3 + (barracks * 15);
 
         // Apply Food Technology Multiplier
         const foodTech = player.technologies.food;
         const techMultipliers = [1, 1.5, 3, 4.5, 6];
         const capacity = Math.floor(baseCapacity * techMultipliers[foodTech]);
 
-        // Total Units = Pop (3 fixed) + Army Units on Grid
+        // Total Units = Pop (Civilians + Units on Grid + Garrison Soldiers)
         let armyCount = player.grid.filter(c => c && c.isUnit).length;
-        let totalPop = player.pop + armyCount;
+
+        // Count civilians in Meclis (assuming 1 Meclis per player, usually counts as 3 pop base if player.pop is 0)
+        let basePop = player.pop > 0 ? player.pop : 3;
+
+        // Calculate Garrison Soldiers (needed for Total Pop, but not Capacity)
+        const garrisonSoldiers = player.grid.reduce((sum, c) => {
+            if (c && c.type === 'Kışla' && c.garrison) {
+                return sum + c.garrison.length;
+            }
+            return sum;
+        }, 0);
+
+        // Total Population = Base (Civilians) + Army on Grid + Garrison Soldiers
+        let totalPop = basePop + armyCount + garrisonSoldiers;
+
+        return { capacity, totalPop };
+    }
+
+    checkCapacity(player) {
+        const { capacity, totalPop } = this.getCapacityInfo(player);
 
         if (totalPop > capacity) {
             const excess = totalPop - capacity;
@@ -2152,6 +2179,13 @@ export class Game {
                             const emptySlots = player.grid.map((cell, idx) => ({ cell, idx })).filter(item => !item.cell);
 
                             if (emptySlots.length > 0) {
+                                // Check Population Limit
+                                const { capacity, totalPop } = this.getCapacityInfo(player);
+                                if (totalPop + 1 > capacity) {
+                                    this.log(`⚠️ PROPAGANDA BAŞARISIZ! ${player.name} nüfus limiti dolu! (${totalPop}/${capacity})`);
+                                    break;
+                                }
+
                                 const targetSlot = emptySlots[0];
                                 const stolenUnitType = target.grid[randomUnit.idx].type;
                                 player.grid[targetSlot.idx] = target.grid[randomUnit.idx];
@@ -2369,6 +2403,12 @@ export class Game {
 
         const card = player.hand[handIndex];
         if (!card || card.type !== 'Teknoloji') return { success: false, msg: "Geçersiz kart!" };
+
+        // 1. Science Center Requirement (Building must exist)
+        const hasScienceCenter = player.grid.some(cell => cell && cell.type === 'Bilim Merkezi');
+        if (!hasScienceCenter) {
+            return { success: false, msg: "Teknoloji geliştirmek için 'Bilim Merkezi' binasına sahip olmalısınız!" };
+        }
 
         // Check available scientists in Science Centers
         let totalScientists = 0;

@@ -22,40 +22,192 @@
             </h1>
             <p class="subtitle">v2.0 - Dijital Masa Oyunu</p>
 
-            <div class="player-selection">
-                <h2>Oyuncu Sayısı Seçin</h2>
-                <div class="player-buttons">
-                    <button class="player-btn" data-players="2">
-                        <span class="player-icon">👥</span>
-                        <span class="player-count">2 Oyuncu</span>
-                    </button>
-                    <button class="player-btn" data-players="3">
-                        <span class="player-icon">👥👤</span>
-                        <span class="player-count">3 Oyuncu</span>
-                    </button>
-                    <button class="player-btn" data-players="4">
-                        <span class="player-icon">👥👥</span>
-                        <span class="player-count">4 Oyuncu</span>
+            <div class="mode-tabs">
+                <button class="mode-tab active" id="tab-local">YEREL OYUN</button>
+                <button class="mode-tab" id="tab-multiplayer">MULTIPLAYER</button>
+            </div>
+
+            <div id="content-local">
+                <div class="player-selection">
+                    <div class="player-buttons">
+                        <button class="player-btn" data-players="2">
+                            <span class="player-icon">👥</span>
+                            <span class="player-count">2 Oyuncu</span>
+                        </button>
+                        <button class="player-btn" data-players="3">
+                            <span class="player-icon">👥👤</span>
+                            <span class="player-count">3 Oyuncu</span>
+                        </button>
+                        <button class="player-btn" data-players="4">
+                            <span class="player-icon">👥👥</span>
+                            <span class="player-count">4 Oyuncu</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="selected-info" id="selected-info" style="display: none;">
+                    <p>Seçilen: <strong id="selected-count">2</strong> Oyuncu</p>
+
+                    <div class="bot-selection-inline">
+                        <h3 style="font-size: 1rem; margin-bottom: 10px; color: var(--color-gold);">🤖 Bot Sayısı</h3>
+                        <div class="bot-buttons-inline">
+                            <button class="bot-btn-small selected" data-bots="0">0</button>
+                            <button class="bot-btn-small" data-bots="1">1</button>
+                            <button class="bot-btn-small" data-bots="2">2</button>
+                            <button class="bot-btn-small" data-bots="3">3</button>
+                        </div>
+                    </div>
+
+                    <button class="start-btn" id="start-game">
+                        ⚔️ Oyunu Başlat
                     </button>
                 </div>
             </div>
 
-            <div class="selected-info" id="selected-info" style="display: none;">
-                <p>Seçilen: <strong id="selected-count">2</strong> Oyuncu</p>
+            <div id="content-multiplayer" style="display: none;">
+                <!-- State 1: Login -->
+                <div id="mp-login-view" class="multiplayer-panel">
+                    <div class="mp-icon">🌍</div>
+                    <h3>ÇEVRİMİÇİ OYNA</h3>
+                    <p style="margin-bottom: 20px;">Dünyanın dört bir yanındaki krallara meydan oku!</p>
 
-                <div class="bot-selection-inline">
-                    <h3 style="font-size: 1rem; margin-bottom: 10px; color: var(--color-gold);">🤖 Bot Sayısı</h3>
-                    <div class="bot-buttons-inline">
-                        <button class="bot-btn-small selected" data-bots="0">0</button>
-                        <button class="bot-btn-small" data-bots="1">1</button>
-                        <button class="bot-btn-small" data-bots="2">2</button>
-                        <button class="bot-btn-small" data-bots="3">3</button>
+                    <button id="google-login-btn" class="google-btn">
+                        <span class="google-icon">
+                            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"
+                                style="display: block;">
+                                <path fill="#EA4335"
+                                    d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z">
+                                </path>
+                                <path fill="#4285F4"
+                                    d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z">
+                                </path>
+                                <path fill="#FBBC05"
+                                    d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z">
+                                </path>
+                                <path fill="#34A853"
+                                    d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z">
+                                </path>
+                            </svg>
+                        </span>
+                        Google ile Giriş Yap
+                    </button>
+                    <p style="font-size: 0.75rem; margin-top: 15px; opacity: 0.6;">(Demo: Tıklayarak profil
+                        oluşturulabilir)</p>
+                </div>
+
+                <div class="divider"
+                    style="display: flex; align-items: center; justify-content: center; gap: 10px; margin: 20px 0; opacity: 0.5;">
+                    <span style="height: 1px; width: 30px; background: white;"></span>
+                    <span style="font-size: 0.8rem; color: #ccc;">VEYA</span>
+                    <span style="height: 1px; width: 30px; background: white;"></span>
+                </div>
+
+                <button id="lan-game-btn" class="secondary-btn"
+                    style="width: 100%; border-color: var(--color-gold); background: rgba(0,0,0,0.4);">
+                    🏠 Aynı Ağda Oyna (LAN)
+                </button>
+
+
+                <!-- State 3: LAN Lobby (Hidden by default) -->
+                <div id="mp-lan-view" class="multiplayer-panel" style="display: none;">
+                    <div class="mp-icon">📡</div>
+                    <h3 style="margin-bottom: 20px;">Yerel Ağ Taranıyor...</h3>
+
+                    <div id="room-list"
+                        style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left; height: 120px; overflow-y: auto;">
+                        <div style="color: #64748b; font-size: 0.9rem; text-align: center; padding-top: 30px;">
+                            Aktif oyun bulunamadı.<br>
+                            <small>Aynı Wi-Fi ağında olduğunuzdan emin olun.</small>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button id="create-room-btn" class="start-btn" style="flex: 1; font-size: 1rem; padding: 12px;">
+                            ➕ Oda Kur
+                        </button>
+                        <button id="back-to-mp-menu-btn" class="secondary-btn" style="padding: 12px 15px;">
+                            ⬅️
+                        </button>
                     </div>
                 </div>
 
-                <button class="start-btn" id="start-game">
-                    ⚔️ Oyunu Başlat
-                </button>
+                <!-- State 4: Active Lobby (Waiting Room) -->
+                <div id="mp-lobby-active" class="multiplayer-panel" style="display: none;">
+                    <div
+                        style="background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; border-radius: 8px; padding: 10px; margin-bottom: 20px;">
+                        <p style="font-size: 0.8rem; color: #10b981; margin-bottom: 5px;">ODA KODU</p>
+                        <h2 id="lobby-code" style="font-size: 2rem; letter-spacing: 5px; color: white; margin: 0;">
+                            ------
+                        </h2>
+                    </div>
+
+                    <div id="lobby-player-list" style="text-align: left; margin-bottom: 20px;">
+                        <!-- Players will be injected here -->
+                        <div class="lobby-player-item">
+                            <span class="p-avatar">👑</span>
+                            <span class="p-name">Siz (Kurucu)</span>
+                            <span class="p-status ready">Hazır</span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button id="start-mp-game-btn" class="start-btn"
+                            style="flex: 1; font-size: 1rem; padding: 12px; filter: grayscale(1);">
+                            ⏳ Oyuncular Bekleniyor...
+                        </button>
+                        <button id="leave-lobby-btn" class="secondary-btn"
+                            style="background: rgba(239, 68, 68, 0.2); border-color: #ef4444;">
+                            ❌
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Socket.io connection script -->
+                <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+                <!-- State 2: Profile (Hidden by default) -->
+                <div id="mp-profile-view" class="multiplayer-panel" style="display: none;">
+                    <div class="profile-header">
+                        <img src="https://ui-avatars.com/api/?name=Kral&background=random&size=128" id="user-avatar"
+                            class="profile-avatar">
+                        <div class="profile-info">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <h3 id="user-name" style="margin: 0; font-size: 1.3rem;">Misafir Kral</h3>
+                                <button id="edit-nickname-btn"
+                                    style="background:none; border:none; cursor:pointer; font-size:1rem;">✏️</button>
+                            </div>
+                            <input type="text" id="nickname-input"
+                                style="display: none; background: rgba(255,255,255,0.1); border: 1px solid var(--color-gold); color: white; padding: 5px; border-radius: 4px; width: 150px; margin-bottom: 5px;"
+                                maxlength="15" placeholder="Yeni İsim">
+                            <div class="profile-rank" style="color: var(--color-gold); font-size: 0.9rem;">⭐ Acemi
+                                Komutan</div>
+                        </div>
+                    </div>
+
+                    <div class="profile-stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">Galibiyet</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">0%</div>
+                            <div class="stat-label">Kazanma</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">1000</div>
+                            <div class="stat-label">Puan</div>
+                        </div>
+                    </div>
+
+                    <button class="start-btn" style="margin-top: 25px; width: 100%;">
+                        🔍 Eşleşme Bul
+                    </button>
+
+                    <button id="logout-btn" class="secondary-btn"
+                        style="margin-top: 15px; width: 100%; border-color: #ef4444; color: #fca5a5;">
+                        Çıkış Yap
+                    </button>
+                </div>
             </div>
 
             <div class="menu-footer">
@@ -230,6 +382,26 @@
         let selectedPlayers = 2;
         let selectedBots = 0;
 
+        // MODE TABS
+        const tabLocal = document.getElementById('tab-local');
+        const tabMultiplayer = document.getElementById('tab-multiplayer');
+        const contentLocal = document.getElementById('content-local');
+        const contentMultiplayer = document.getElementById('content-multiplayer');
+
+        tabLocal.addEventListener('click', () => {
+            tabLocal.classList.add('active');
+            tabMultiplayer.classList.remove('active');
+            contentLocal.style.display = 'block';
+            contentMultiplayer.style.display = 'none';
+        });
+
+        tabMultiplayer.addEventListener('click', () => {
+            tabMultiplayer.classList.add('active');
+            tabLocal.classList.remove('active');
+            contentLocal.style.display = 'none';
+            contentMultiplayer.style.display = 'flex'; // Flex for centering
+        });
+
         // Player selection
         document.querySelectorAll('.player-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -320,6 +492,257 @@
 
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Multiplayer Auth Logic (Mock)
+        const googleLoginBtn = document.getElementById('google-login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const loginView = document.getElementById('mp-login-view');
+        const profileView = document.getElementById('mp-profile-view');
+
+        if (googleLoginBtn) {
+            googleLoginBtn.addEventListener('click', () => {
+                // Simulate Login Process
+                googleLoginBtn.innerHTML = '<span class="google-icon">⏳</span> Giriş yapılıyor...';
+
+                setTimeout(() => {
+                    // Switch to Profile View
+                    loginView.style.display = 'none';
+                    profileView.style.display = 'block';
+
+                    // LOAD XP & Nickname
+                    const savedXP = parseInt(localStorage.getItem('krallik_xp')) || 1000;
+                    const savedWins = parseInt(localStorage.getItem('krallik_wins')) || 0;
+                    const savedNickname = localStorage.getItem('krallik_nickname') || 'Misafir Kral';
+
+                    const nameDisplay = document.getElementById('user-name');
+                    if (nameDisplay) nameDisplay.textContent = savedNickname;
+
+                    // Update UI Stats
+                    const statValues = document.querySelectorAll('.stat-value');
+                    if (statValues.length >= 3) {
+                        statValues[0].textContent = savedWins;
+                        statValues[1].textContent = savedWins > 0 ? "50%" : "0%";
+                        statValues[2].textContent = savedXP;
+                    }
+
+                    // Nickname Edit Logic
+                    const editBtn = document.getElementById('edit-nickname-btn');
+                    const nameInput = document.getElementById('nickname-input');
+
+                    if (editBtn && nameInput && nameDisplay) {
+                        editBtn.onclick = () => {
+                            if (nameInput.style.display === 'none') {
+                                nameInput.style.display = 'block';
+                                nameInput.value = nameDisplay.textContent;
+                                nameInput.focus();
+                                nameDisplay.style.display = 'none';
+
+                                editBtn.textContent = 'KAYDET';
+                                editBtn.style.fontSize = '0.75rem';
+                                editBtn.style.background = 'var(--color-gold)';
+                                editBtn.style.color = '#000';
+                                editBtn.style.padding = '4px 10px';
+                                editBtn.style.borderRadius = '4px';
+                                editBtn.style.fontWeight = 'bold';
+                            } else {
+                                const newName = nameInput.value.trim() || 'Misafir Kral';
+                                nameDisplay.textContent = newName;
+                                localStorage.setItem('krallik_nickname', newName); // Save
+
+                                nameInput.style.display = 'none';
+                                nameDisplay.style.display = 'block';
+
+                                editBtn.textContent = '✏️';
+                                editBtn.style.background = 'none';
+                                editBtn.style.color = 'inherit';
+                                editBtn.style.padding = '0';
+                                editBtn.style.fontSize = '1rem';
+                                editBtn.style.fontWeight = 'normal';
+                            }
+                        };
+                    }
+
+                    googleLoginBtn.innerHTML = `
+                        <span class="google-icon">
+                            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="display: block;">
+                                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+                                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+                                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+                                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+                            </svg>
+                        </span>
+                        Google ile Giriş Yap`;
+                }, 1000);
+            });
+        }
+
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                profileView.style.display = 'none';
+                loginView.style.display = 'block';
+            });
+        }
+
+        // LAN Game Logic (Navigation)
+        const lanGameBtn = document.getElementById('lan-game-btn');
+        const backToMenuBtn = document.getElementById('back-to-mp-menu-btn');
+        const lanView = document.getElementById('mp-lan-view');
+
+        if (lanGameBtn && lanView) {
+            lanGameBtn.addEventListener('click', () => {
+                loginView.style.display = 'none';
+                lanView.style.display = 'block';
+            });
+        }
+
+        if (backToMenuBtn) {
+            backToMenuBtn.addEventListener('click', () => {
+                lanView.style.display = 'none';
+                loginView.style.display = 'block';
+            });
+        }
+
+        /* 
+           SOCKET.IO LOGIC 
+           Connects to the server serving this page (Standard for LAN)
+        */
+        const socket = io(); // Connects to window.location.host automatically
+
+        const createRoomBtn = document.getElementById('create-room-btn');
+        const lobbyView = document.getElementById('mp-lobby-active');
+        const lobbyCodeDisplay = document.getElementById('lobby-code');
+        const lobbyPlayerList = document.getElementById('lobby-player-list');
+        const startMpGameBtn = document.getElementById('start-mp-game-btn');
+        const leaveLobbyBtn = document.getElementById('leave-lobby-btn');
+
+        // Connect when opening LAN view
+        if (lanGameBtn) {
+            lanGameBtn.addEventListener('click', () => {
+                if (!socket.connected) {
+                    socket.connect();
+                }
+            });
+        }
+
+        // 1. Create Room
+        if (createRoomBtn) {
+            createRoomBtn.addEventListener('click', () => {
+                const nickname = localStorage.getItem('krallik_nickname') || 'Misafir Oyuncu';
+                createRoomBtn.textContent = '⏳ Oluşturuluyor...';
+
+                if (socket.connected) {
+                    socket.emit('create_room', { nickname });
+                } else {
+                    socket.connect();
+                    setTimeout(() => socket.emit('create_room', { nickname }), 500);
+                }
+            });
+        }
+
+        // Socket Events
+        socket.on('connect', () => {
+            console.log("Sunucuya bağlanıldı!");
+            socket.emit('get_rooms'); // Request rooms immediately
+        });
+
+        socket.on('room_list', (rooms) => {
+            const roomListEl = document.getElementById('room-list');
+            if (!roomListEl) return;
+
+            if (rooms.length === 0) {
+                roomListEl.innerHTML = `
+                    <div style="color: #64748b; font-size: 0.9rem; text-align: center; padding-top: 30px;">
+                        Aktif oyun bulunamadı.<br>
+                        <small>Aynı Wi-Fi ağında olduğunuzdan emin olun.</small>
+                    </div>`;
+                return;
+            }
+
+            roomListEl.innerHTML = '';
+            rooms.forEach(room => {
+                const roomItem = document.createElement('div');
+                roomItem.style.cssText = 'background: rgba(255,255,255,0.1); padding: 10px; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;';
+                roomItem.innerHTML = `
+                    <div>
+                        <div style="font-weight: bold; color: var(--color-gold);">${room.hostName}'in Odası</div>
+                        <div style="font-size: 0.8rem; color: #94a3b8;">${room.playerCount}/4 Oyuncu</div>
+                    </div>
+                    <button class="join-room-btn secondary-btn" data-room-id="${room.id}" style="padding: 5px 15px; font-size: 0.8rem;">Katıl</button>
+                `;
+                roomListEl.appendChild(roomItem);
+            });
+
+            // Add Click Listeners to Join Buttons
+            document.querySelectorAll('.join-room-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const roomId = e.target.getAttribute('data-room-id');
+                    const nickname = localStorage.getItem('krallik_nickname') || 'Misafir Oyuncu';
+                    socket.emit('join_room', { roomId, nickname });
+                });
+            });
+        });
+
+        socket.on('room_created', (data) => {
+            console.log("Oda oluşturuldu:", data);
+            updateLobbyUI(data.roomId, data.players);
+        });
+
+        socket.on('room_updated', (data) => {
+            updateLobbyUI(data.roomId, data.players);
+        });
+
+        function updateLobbyUI(roomId, players) {
+            if (lanView) lanView.style.display = 'none';
+            if (lobbyView) lobbyView.style.display = 'block';
+
+            lobbyCodeDisplay.textContent = roomId;
+
+            // Render Players
+            lobbyPlayerList.innerHTML = '';
+            players.forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'lobby-player-item';
+                item.style.cssText = `display: flex; align-items: center; background: rgba(0,0,0,0.3); padding: 10px; margin-bottom: 5px; border-radius: 6px; border-left: 4px solid ${p.color};`;
+                item.innerHTML = `
+                    <span class="p-avatar" style="font-size: 1.5rem; margin-right: 10px;">${p.isHost ? '👑' : '👤'}</span>
+                    <span class="p-name" style="flex: 1; font-weight: bold;">${p.name}</span>
+                    <span class="p-status" style="color: ${p.ready ? '#10b981' : '#f59e0b'}; font-size: 0.8rem;">${p.isHost ? 'Kurucu' : 'Bekliyor'}</span>
+                `;
+                lobbyPlayerList.appendChild(item);
+            });
+
+            // Enable Start Button if enough players
+            if (players.length >= 2) {
+                startMpGameBtn.innerHTML = '⚔️ OYUNU BAŞLAT';
+                startMpGameBtn.style.filter = 'none';
+                startMpGameBtn.disabled = false;
+            } else {
+                startMpGameBtn.innerHTML = '⏳ Oyuncular Bekleniyor...';
+                startMpGameBtn.style.filter = 'grayscale(1)';
+                startMpGameBtn.disabled = true;
+            }
+        }
+
+        // Mock Function for testing without server
+        function simulateLobby(code, hostname) {
+            updateLobbyUI(code, [{
+                id: 'host',
+                name: hostname,
+                isHost: true,
+                ready: true,
+                color: '#dc2626'
+            }]);
+        }
+
+        // Leave Lobby
+        if (leaveLobbyBtn) {
+            leaveLobbyBtn.addEventListener('click', () => {
+                if (socket.connected) socket.disconnect();
+                lobbyView.style.display = 'none';
+                if (lanView) lanView.style.display = 'block';
+                createRoomBtn.textContent = '➕ Oda Kur';
+            });
         }
 
         // Click outside to close

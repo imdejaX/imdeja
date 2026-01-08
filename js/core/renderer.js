@@ -284,28 +284,8 @@ export class Renderer {
                 
                 <div class="resources">
                     <span class="res-item" title="Mevcut Altın">💰 ${p.gold}</span>
-                <span class="res-item" title="Nüfus (Meclis Sivilleri + Kışla Askerleri)">👥 ${(() => {
-                    const barracksCount = p.grid.filter(c => c && c.type === 'Kışla').length;
-
-                    // Capacity: Meclis (3) + 20 per Barracks (Updated standard)
-                    let capacity = 3 + (barracksCount * 20);
-
-                    // Apply Food Tech Multiplier if desired (Optional, currently disabled for strict adherence)
-                    // const foodTech = p.technologies.food;
-                    // const techMultipliers = [1, 1.5, 3, 4.5, 6];
-                    // capacity = Math.floor(capacity * techMultipliers[foodTech]);
-
-                    // Population: Total Civilians + Total Garrison Soldiers
-                    const meclis = p.grid[0];
-                    const civilians = (meclis && meclis.garrison) ? meclis.garrison.length : 0;
-
-                    const garrisonSoldiers = p.grid.reduce((sum, c) => {
-                        if (c && (c.type === 'Kışla' || c.type === 'Bilim Merkezi') && c.garrison) return sum + c.garrison.length;
-                        return sum;
-                    }, 0);
-
-                    const totalPop = civilians + garrisonSoldiers;
-
+                <span class="res-item" title="Nüfus (Aktif Ordu) / Kapasite">👥 ${(() => {
+                    const { capacity, totalPop } = this.game.getCapacityInfo(p);
                     return `${totalPop}/${capacity}`;
                 })()}</span>
                     <span class="res-item" title="Aksiyon">⚡ ${p.actionsRemaining}</span>
@@ -775,29 +755,44 @@ export class Renderer {
 
             // Add event listener for Roll Dice button
             document.getElementById('roll-dice-btn').addEventListener('click', async () => {
-                window.soundManager.playDiceRoll();
+                try {
+                    window.soundManager.playDiceRoll();
 
-                // Roll dice first so animation has data
-                const diceRoll = this.game.prepareAttackDice();
-                if (!diceRoll) {
-                    alert("Bekleyen saldırı verisi bulunamadı!");
-                    return;
-                }
+                    // Roll dice first so animation has data
+                    const diceRoll = this.game.prepareAttackDice();
+                    if (!diceRoll) {
+                        alert("Bekleyen saldırı verisi bulunamadı!");
+                        this.game.clearActionMode();
+                        this.render();
+                        return;
+                    }
 
-                // Hide prompt
-                prompt.style.display = 'none';
+                    // Hide prompt
+                    prompt.style.display = 'none';
 
-                // Show dice animation FIRST (2 seconds) with CURRENT roll data
-                this.showDiceRoll(diceRoll);
+                    // Show dice animation FIRST (2 seconds) with CURRENT roll data
+                    this.showDiceRoll(diceRoll);
 
-                // Wait for dice animation to complete
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                    // Wait for dice animation to complete
+                    await new Promise(resolve => setTimeout(resolve, 2000));
 
-                // NOW execute the attack with combat calculator (uses the prepared dice)
-                const result = await this.game.rollDiceForAttack();
+                    // NOW execute the attack with combat calculator (uses the prepared dice)
+                    const result = await this.game.rollDiceForAttack();
 
-                if (result.success) {
-                    // Render after everything is done
+                    if (result.success) {
+                        // Render after everything is done
+                        this.render();
+                    } else {
+                        // If success is false (logic error), still render to clear state
+                        console.error("Attack failed logic:", result.msg);
+                        this.game.clearActionMode();
+                        this.render();
+                    }
+                } catch (err) {
+                    console.error("Dice Roll Error:", err);
+                    alert("Saldırı sırasında hata oluştu: " + err.message);
+                    this.game.clearActionMode(); // FORCE CLEAR
+                    this.game.pendingAttack = null;
                     this.render();
                 }
             });
