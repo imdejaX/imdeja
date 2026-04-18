@@ -359,9 +359,9 @@ export class BotAI {
         if (buildings.length === 0) return null;
 
         // Priority: Low HP > High value > Random
-        // Avoid Meclis unless it's the only option
-        const nonMeclis = buildings.filter(b => b.cell.type !== 'Meclis');
-        const targets = nonMeclis.length > 0 ? nonMeclis : buildings;
+        // Avoid Saray unless it's the only option
+        const nonSaray = buildings.filter(b => b.cell.type !== 'Saray');
+        const targets = nonSaray.length > 0 ? nonSaray : buildings;
 
         // Find lowest HP building
         return targets.reduce((best, b) => {

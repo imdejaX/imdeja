@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"^    [a-zA-Z].*{$\\\\|^    async [a-zA-Z]\" d:/anGra/js/core/bot.js)"
+    ]
+  }
+}

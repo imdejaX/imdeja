@@ -40,7 +40,7 @@ export class CombatCalculator {
 
         // Create content container
         modal.innerHTML = `
-            <div class="combat-calc-content" style="
+            <div id="combat-content-container" class="combat-calc-content" style="
                 background: linear-gradient(135deg, rgba(20, 20, 30, 0.98) 0%, rgba(30, 30, 45, 0.98) 100%);
                 border: 3px solid rgba(255, 255, 255, 0.3);
                 border-radius: 16px;
@@ -90,6 +90,7 @@ export class CombatCalculator {
 
         const linesContainer = document.getElementById('combat-calc-lines');
         const skipBtn = document.getElementById('combat-skip-btn');
+        const contentContainer = document.getElementById('combat-content-container');
 
         // Show modal
         modal.style.display = 'flex';
@@ -101,6 +102,7 @@ export class CombatCalculator {
         }
 
         // Define calculation lines
+        // Show calculation lines
         const lines = [
             { text: `━━━━━━━━━━━━━━━━━━━━━━━━━━━`, color: '#4b5563', bold: false },
             { text: `SALDIRGAN: ${attackerName}`, color: attackerColor, bold: true },
@@ -113,6 +115,58 @@ export class CombatCalculator {
             { text: `━━━━━━━━━━━━━━━━━━━━━━━━━━━`, color: '#4b5563', bold: false },
             ...defenderBaseCalc.map(calc => ({ text: calc.text, color: calc.color || '#a8dadc', bold: false })),
             { text: `🎲 Zar: ${defenseRoll}`, color: '#fbbf24', bold: false },
+        ];
+
+        // 1. Show setup and base calculations first
+        for (let i = 0; i < lines.length; i++) {
+            if (combatData.skipAnimation) {
+                await this.typewriteLine(linesContainer, lines[i], true);
+            } else {
+                await this.typewriteLine(linesContainer, lines[i]);
+                await this.delay(25); // Faster line delay for setup
+            }
+        }
+
+        // 2. Insert Animation Container
+        const animContainer = document.createElement('div');
+        animContainer.className = 'combat-anim-container';
+        animContainer.innerHTML = `
+            <div class="anim-emoji anim-sword-left">🗡️</div>
+            <div class="anim-emoji anim-sword-right">🗡️</div>
+            <div class="anim-emoji anim-shield">🛡️</div>
+            <div class="anim-damage-text">-${combatData.result.success ? (totalAttack - totalDefense) : 0}</div>
+        `;
+        // Insert before text lines or overlay? Overlay is better.
+        // The modal content has relative positioning.
+        contentContainer.appendChild(animContainer);
+
+        if (!combatData.skipAnimation) {
+            // 3. Animation Sequence
+            await this.delay(200);
+
+            // Phase 1: Prepare (Swords appear)
+            animContainer.classList.add('anim-prepare');
+            if (window.soundManager) window.soundManager.playTone(600, 0.1, 'triangle');
+            await this.delay(600);
+
+            // Phase 2: Clash
+            animContainer.classList.add('anim-clash');
+            if (window.soundManager) window.soundManager.playTone(100, 0.1, 'sawtooth', 0.5); // Impact sound
+            await this.delay(300);
+
+            // Phase 3: Result
+            if (result.success) {
+                animContainer.classList.add('anim-result-success');
+                if (window.soundManager) window.soundManager.playVictory();
+            } else {
+                animContainer.classList.add('anim-result-fail');
+                if (window.soundManager) window.soundManager.playDefeat();
+            }
+            await this.delay(800);
+        }
+
+        // 3. Show Final Totals and Result Text (After animation)
+        const finalLines = [
             { text: ``, color: 'white', bold: false },
             { text: `━━━━━━━━━━━━━━━━━━━━━━━━━━━`, color: '#4b5563', bold: false },
             { text: `TOPLAM SALDIRI: ${totalAttack}`, color: attackerColor, bold: true, size: '1.1rem' },
@@ -128,45 +182,24 @@ export class CombatCalculator {
             }
         ];
 
-        // Skip animation if requested (e.g. for bots)
-        let skipped = combatData.skipAnimation || false;
-
-        // Skip button functionality
-        skipBtn.addEventListener('click', () => {
-            skipped = true;
-            skipBtn.style.display = 'none';
-        });
-
-        // Typewriter effect for each line
-        for (let i = 0; i < lines.length; i++) {
-            if (skipped) {
-                // Show all remaining lines instantly
-                for (let j = i; j < lines.length; j++) {
-                    await this.typewriteLine(linesContainer, lines[j], true);
-                }
-                break;
+        for (let i = 0; i < finalLines.length; i++) {
+            if (combatData.skipAnimation) {
+                await this.typewriteLine(linesContainer, finalLines[i], true);
+            } else {
+                await this.typewriteLine(linesContainer, finalLines[i]);
+                await this.delay(this.lineDelay);
             }
-            await this.typewriteLine(linesContainer, lines[i]);
-            await this.delay(this.lineDelay);
         }
 
         // Hide skip button after completion
         skipBtn.style.display = 'none';
 
-        // Play result sound
-        if (window.soundManager) {
-            if (result.success) {
-                window.soundManager.playVictory();
-            } else {
-                window.soundManager.playDefeat();
-            }
-        }
-
         // Auto-close after showing result
-        await this.delay(3000);
+        await this.delay(combatData.skipAnimation ? 1000 : 3000);
         modal.classList.remove('show');
         await this.delay(300);
         modal.style.display = 'none';
+        modal.innerHTML = ''; // Clean up for next time
     }
 
     /**

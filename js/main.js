@@ -1,52 +1,71 @@
 import { Game } from './core/game.js';
 import { Renderer } from './core/renderer.js';
+import { MapRenderer } from './core/mapRenderer.js';
+import { AttackAnimator } from './core/attackAnimator.js';
 import { BotAI } from './core/bot.js';
 import { soundManager } from './core/soundManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Game initialization
+    // ── Oyun Başlatma ───────────────────────────────────────────────────────
     const game = new Game();
     const renderer = new Renderer(game);
     const botAI = new BotAI(game);
 
-    // Make bot, renderer, and sound manager globally accessible
+    // SVG harita
+    const svgEl = document.getElementById('game-map');
+    let mapRenderer = null;
+    let attackAnimator = null;
+
+    if (svgEl) {
+        mapRenderer = new MapRenderer(game, svgEl);
+        attackAnimator = new AttackAnimator(mapRenderer);
+
+        // Bölge seçimi → oyuncu kartını vurgula
+        mapRenderer.onTerritorySelect = (tId) => {
+            renderer.render();
+        };
+
+        // Yıkım modu
+        mapRenderer.onDemolishTerritory = (tId) => {
+            renderer.render();
+        };
+
+        // AttackAnimator'ı game'e bağla — combat.js rollDiceForAttack sonrası çağrılacak
+        game.onAttackAnimated = async (attackerId, defenderId, result) => {
+            if (attackAnimator) await attackAnimator.playAttack(attackerId, defenderId, result);
+            if (mapRenderer) mapRenderer.render();
+        };
+    }
+
+    // Global erişim
     window.botAI = botAI;
     window.renderer = renderer;
+    window.mapRenderer = mapRenderer;
     window.soundManager = soundManager;
 
     try {
-        // Initial render
         game.initializeGame();
         renderer.render();
+        if (mapRenderer) mapRenderer.render();
     } catch (e) {
-        console.error("Game Initialization Error:", e);
-        alert("Oyun başlatılırken hata oluştu: " + e.message);
+        console.error('Game Initialization Error:', e);
+        alert('Oyun başlatılırken hata oluştu: ' + e.message);
     }
 
-    // Resume audio context on first user interaction
     document.addEventListener('click', () => soundManager.resumeContext(), { once: true });
 
-    // UI Event Listeners
-
-    // Sound Toggle Button
+    // ── Ses Butonu ─────────────────────────────────────────────────────────
     const soundToggleBtn = document.getElementById('sound-toggle-btn');
     if (soundToggleBtn) {
-        // Set initial state
         soundToggleBtn.textContent = soundManager.isEnabled() ? '🔊' : '🔇';
-
         soundToggleBtn.addEventListener('click', () => {
             const enabled = soundManager.toggle();
             soundToggleBtn.textContent = enabled ? '🔊' : '🔇';
-            soundToggleBtn.title = enabled ? 'Sesi Kapat' : 'Sesi Aç';
-
-            // Play a confirmation sound if turning on
-            if (enabled) {
-                soundManager.playClick();
-            }
+            if (enabled) soundManager.playClick();
         });
     }
 
-    // Home Button
+    // ── Ana Menü ───────────────────────────────────────────────────────────
     const homeBtn = document.getElementById('home-btn');
     if (homeBtn) {
         homeBtn.addEventListener('click', () => {
@@ -57,74 +76,58 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Market Modal
+    // ── Pazar Modalı ──────────────────────────────────────────────────────
     const marketBtn = document.getElementById('market-btn');
-    const marketModal = document.getElementById('market-modal');
+    const marketBackdrop = document.getElementById('market-backdrop');
 
-    // Helper: Update Refresh Button UI
+    function openMarket() {
+        const activePlayer = game.getActivePlayer();
+        const goldDisplay = document.getElementById('market-player-gold');
+        if (goldDisplay && activePlayer) goldDisplay.textContent = activePlayer.gold;
+
+        updateRefreshButtonUI();
+
+        const deckCounts = game.getDeckCardCounts();
+        const el = (id) => document.getElementById(id);
+        if (el('deck-count-bina')) el('deck-count-bina').textContent = deckCounts['Bina'] ?? 0;
+        if (el('deck-count-asker')) el('deck-count-asker').textContent = deckCounts['Asker'] ?? 0;
+        if (el('deck-count-diplomasi')) el('deck-count-diplomasi').textContent = deckCounts['Diplomasi'] ?? 0;
+        if (el('deck-count-teknoloji')) el('deck-count-teknoloji').textContent = deckCounts['Teknoloji'] ?? 0;
+
+        renderer.renderMarket();
+        if (marketBackdrop) marketBackdrop.style.display = 'flex';
+        soundManager.playModalOpen();
+    }
+
+    function closeMarket() {
+        if (marketBackdrop) marketBackdrop.style.display = 'none';
+        soundManager.playModalClose();
+    }
+
     function updateRefreshButtonUI() {
         const activePlayer = game.getActivePlayer();
         const refreshBtn = document.getElementById('refresh-market-btn');
-        if (!refreshBtn) return;
+        if (!refreshBtn || !activePlayer) return;
 
-        // Ensure marketRefreshes is a number
-        if (!activePlayer) return;
-        if (typeof activePlayer.marketRefreshes !== 'number') {
-            activePlayer.marketRefreshes = 0;
-        }
-
-        const count = activePlayer.marketRefreshes;
-        const remaining = Math.max(0, 2 - count);
-
-        // Update Button Content with Badge
-        const badgeClass = remaining === 0 ? 'refresh-badge zero' : 'refresh-badge';
-        refreshBtn.innerHTML = `
-            <span>🔄 Yenile</span>
-            <span class="${badgeClass}">${remaining}</span>
-        `;
-
-        refreshBtn.title = `Pazarı Yenile (Kalan Hakkınız: ${remaining})`;
-
-        // Update Button State
-        if (count >= 2) {
-            refreshBtn.disabled = true;
-        } else {
-            refreshBtn.disabled = false;
-        }
+        if (typeof activePlayer.marketRefreshes !== 'number') activePlayer.marketRefreshes = 0;
+        const remaining = Math.max(0, 2 - activePlayer.marketRefreshes);
+        const badge = document.getElementById('refresh-badge-count');
+        if (badge) badge.textContent = remaining;
+        refreshBtn.disabled = remaining === 0;
     }
 
-    if (marketBtn && marketModal) {
-        marketBtn.addEventListener('click', () => {
-            soundManager.playModalOpen();
-
-            // Update player resources display
-            const activePlayer = game.getActivePlayer();
-            const goldDisplay = document.getElementById('market-player-gold');
-            if (goldDisplay && activePlayer) goldDisplay.textContent = activePlayer.gold;
-
-            // Reset refresh button state
-            if (activePlayer) updateRefreshButtonUI();
-
-            // Update deck card counts for strategic planning
-            const deckCounts = game.getDeckCardCounts();
-            document.getElementById('deck-count-bina').textContent = deckCounts['Bina'];
-            document.getElementById('deck-count-asker').textContent = deckCounts['Asker'];
-            document.getElementById('deck-count-diplomasi').textContent = deckCounts['Diplomasi'];
-            document.getElementById('deck-count-teknoloji').textContent = deckCounts['Teknoloji'];
-
-            marketModal.showModal();
-        });
-    }
+    if (marketBtn) marketBtn.addEventListener('click', openMarket);
 
     const closeMarketBtn = document.getElementById('close-market-btn');
-    if (closeMarketBtn) {
-        closeMarketBtn.addEventListener('click', () => {
-            soundManager.playModalClose();
-            marketModal.close();
+    if (closeMarketBtn) closeMarketBtn.addEventListener('click', closeMarket);
+
+    // Backdrop'a tıklayınca kapat
+    if (marketBackdrop) {
+        marketBackdrop.addEventListener('click', (e) => {
+            if (e.target === marketBackdrop) closeMarket();
         });
     }
 
-    // Refresh Market Button
     const refreshMarketBtn = document.getElementById('refresh-market-btn');
     if (refreshMarketBtn) {
         refreshMarketBtn.addEventListener('click', () => {
@@ -134,48 +137,83 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert(result.msg);
             } else {
                 soundManager.playMarketRefresh();
-
-                // Update UI after successful refresh
                 updateRefreshButtonUI();
-
-                // Re-render market grid
-                renderer.render();
+                renderer.renderMarket();
             }
         });
     }
 
-    // Close modal on outside click
-    if (marketModal) {
-        marketModal.addEventListener('click', (e) => {
-            if (e.target === marketModal) {
-                soundManager.playModalClose();
-                marketModal.close();
-            }
-        });
-    }
-
-    // End Turn
+    // ── Turu Bitir ─────────────────────────────────────────────────────────
     const endTurnBtn = document.getElementById('end-turn-btn');
     if (endTurnBtn) {
         endTurnBtn.addEventListener('click', () => {
             soundManager.playTurnEnd();
             game.endTurn();
             renderer.render();
+            if (mapRenderer) mapRenderer.render();
         });
     }
 
-    // Keyboard Shortcuts
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            if (marketModal && marketModal.open) {
-                soundManager.playModalClose();
-                marketModal.close();
-            }
-            // Close other modals if any
+    // ── Eylem İptal Butonu ─────────────────────────────────────────────────
+    const cancelActionBtn = document.getElementById('cancel-action-btn');
+    if (cancelActionBtn) {
+        cancelActionBtn.addEventListener('click', () => {
             game.clearActionMode();
             renderer.render();
+            if (mapRenderer) mapRenderer.render();
+        });
+    }
+
+    // ── Eylem Modu Pill Güncellemesi ───────────────────────────────────────
+    // renderer.setActionMode çağrıldığında pill gösterilir
+    const origSetActionMode = game.setActionMode.bind(game);
+    game.setActionMode = function(mode) {
+        origSetActionMode(mode);
+        _updateActionPill(mode);
+    };
+    const origClearActionMode = game.clearActionMode.bind(game);
+    game.clearActionMode = function() {
+        origClearActionMode();
+        _updateActionPill(null);
+        if (mapRenderer) mapRenderer.render();
+    };
+
+    function _updateActionPill(mode) {
+        const pill = document.getElementById('action-mode-pill');
+        const text = document.getElementById('action-mode-text');
+        if (!pill || !text) return;
+        if (!mode) {
+            pill.style.display = 'none';
+            pill.className = 'action-mode-pill';
+            return;
+        }
+        pill.style.display = 'flex';
+        pill.className = 'action-mode-pill ' + mode;
+        const labels = {
+            attack: '⚔️ Saldırı modu — haritada hedef seç',
+            demolish: '🔨 Yıkım modu — binayı seç',
+            build: '🏗️ İnşaat modu — konum seç'
+        };
+        text.textContent = labels[mode] || mode;
+    }
+
+    // ── Klavye Kısayolları ─────────────────────────────────────────────────
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeMarket();
+            game.clearActionMode();
+            renderer.render();
+            if (mapRenderer) mapRenderer.render();
+        }
+        if (e.key === 'Enter' && !marketModal?.style.display !== 'none') {
+            // Hızlı tur bitir (Shift+Enter)
+            if (e.shiftKey) {
+                game.endTurn();
+                renderer.render();
+                if (mapRenderer) mapRenderer.render();
+            }
         }
     });
 
-    console.log("Game initialized with sound effects.");
+    console.log(`Oyun başlatıldı — ${game.players.length} krallık, harita hazır.`);
 });

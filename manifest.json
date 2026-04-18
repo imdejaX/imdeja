@@ -1,0 +1,16 @@
+{
+  "name": "Krallıkların Terazisi",
+  "short_name": "KrallıkTerazisi",
+  "description": "Strateji tabanlı çok oyunculu kart oyunu",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0a0a0f",
+  "theme_color": "#d4af37",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "categories": ["games"],
+  "lang": "tr"
+}

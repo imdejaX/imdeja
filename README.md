@@ -36,7 +36,7 @@ http://localhost:8000
 3. **Kartlar**: Pazar'dan kart satın al, krallığına yerleştir
 4. **Saldırı**: Düşman binalarına saldır, zar at
 5. **Diplomasi**: İttifak kur veya boz
-6. **Zafer**: Meclis'i yık, vassal yap veya en yüksek DP'ye ulaş
+6. **Zafer**: Saray'ı yık, vassal yap veya en yüksek DP'ye ulaş
 
 ## 🎴 Kart Tipleri
 

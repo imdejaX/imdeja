@@ -1,112 +1,152 @@
 <!DOCTYPE html>
 <html lang="tr">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Krallıkların Terazisi v2.0</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="modal.css">
-    <link rel="stylesheet" href="dice.css">
-    <link rel="stylesheet" href="dice-prompt.css">
-    <link rel="stylesheet" href="action-mode.css">
-    <link rel="stylesheet" href="attack-notification.css">
-    <link rel="stylesheet" href="attack-result-notification.css">
-    <link rel="stylesheet" href="joker.css">
-    <link rel="stylesheet" href="attack-result.css">
-    <link rel="stylesheet" href="combat-calc-modal.css">
-    <link rel="stylesheet" href="tech-card.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Krallıkların Terazisi</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="map.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;600&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
-
 <body>
     <div id="app">
-        <!-- Background Elements -->
-        <div class="bg-overlay"></div>
 
-        <!-- Top Bar: Global Status -->
+        <!-- ── HEADER ─────────────────────────────────────────────────────── -->
         <header id="game-header">
             <div class="header-left">
-                <button id="home-btn" class="btn-home" title="Anasayfaya Dön">🏠</button>
-                <div class="logo">👑 Kralların Terazisi</div>
-            </div>
-            <div class="header-center">
-                <div id="turn-indicator" class="turn-indicator"></div>
-            </div>
-            <div class="header-right">
-                <div id="gold-display" class="gold-display"></div>
-                <button id="sound-toggle-btn" class="btn" title="Sesi Aç/Kapat">
-                    🔊
+                <button id="home-btn" class="header-icon-btn" title="Menü">
+                    <span>🏠</span>
                 </button>
-                <button id="market-btn" class="btn-market">PAZAR YERİ</button>
-                <button id="end-turn-btn" class="btn-end-turn">TURU BİTİR</button>
+                <div class="game-logo">👑 Krallıkların Terazisi</div>
+            </div>
+
+            <div class="header-center">
+                <div id="turn-indicator" class="turn-indicator">
+                    <span class="turn-label">TUR</span>
+                    <span id="turn-number" class="turn-number">1</span>
+                    <div id="active-player-badge" class="active-player-badge"></div>
+                </div>
+                <div id="subtitle" class="subtitle-bar"></div>
+            </div>
+
+            <div class="header-right">
+                <div id="gold-display" class="gold-display">
+                    <span class="gold-icon">💰</span>
+                    <span id="gold-amount">0</span>
+                </div>
+                <button id="sound-toggle-btn" class="header-icon-btn" title="Ses">🔊</button>
+                <button id="market-btn" class="btn-market">
+                    <span>🏪</span> Pazar
+                </button>
+                <button id="end-turn-btn" class="btn-end-turn">
+                    <span>⏭️</span> Turu Bitir
+                </button>
             </div>
         </header>
 
-        <!-- Main Game Area -->
-        <main class="game-board">
+        <!-- ── ANA İÇERİK ─────────────────────────────────────────────────── -->
+        <div id="game-content">
 
-            <!-- Player Areas (Dynamically rendered) -->
-            <div id="players-container" class="players-grid">
-                <!-- Players will be injected here via JS -->
-            </div>
+            <!-- Sol Panel: Oyuncular 1-4 -->
+            <aside id="panel-left" class="side-panel">
+                <div id="players-left" class="players-list"></div>
+            </aside>
 
-        </main>
+            <!-- Harita Bölgesi -->
+            <section id="map-container">
+                <!-- Eylem modu göstergesi -->
+                <div id="action-mode-pill" class="action-mode-pill" style="display:none">
+                    <span id="action-mode-text"></span>
+                    <button id="cancel-action-btn">✕</button>
+                </div>
 
-        <!-- Modals -->
-        <dialog id="combat-modal" class="modal">
-            <!-- Combat UI -->
-        </dialog>
+                <!-- SVG Harita -->
+                <svg id="game-map" xmlns="http://www.w3.org/2000/svg"></svg>
 
-        <dialog id="market-modal" class="modal">
-            <div class="modal-content market-modal-content">
-                <div class="modal-header">
-                    <h2>🏪 Pazar Yeri</h2>
-                    <div class="player-resources-display">
-                        <span class="resource-item">💰 <span id="market-player-gold">0</span></span>
-                        <!-- No refresh limit - counter removed -->
+                <!-- Zar overlay -->
+                <div id="dice-overlay" class="dice-overlay">
+                    <div class="dice-overlay-content">
+                        <div id="dice-overlay-label" class="dice-overlay-label">⚔️ vs 🛡️</div>
+                        <div class="dice-row">
+                            <div class="dice-side attacker">
+                                <div class="dice-player-name" id="dice-attacker-name">Saldıran</div>
+                                <div class="dice-face" id="dice-face-attacker">?</div>
+                            </div>
+                            <div class="dice-vs">VS</div>
+                            <div class="dice-side defender">
+                                <div class="dice-player-name" id="dice-defender-name">Savunan</div>
+                                <div class="dice-face" id="dice-face-defender">?</div>
+                            </div>
+                        </div>
                     </div>
-                    <button class="market-refresh-btn" id="refresh-market-btn" title="Pazarı Yenile">
-                        <span>🔄 Yenile</span>
-                        <span class="refresh-badge" id="refresh-badge-count">2</span>
-                    </button>
-                    <button class="icon-btn" id="close-market-btn">✖️</button>
                 </div>
-                <div class="market-info">
-                    <p>Her tur market yenilenir. Paralı askerler veya teknolojiler satın alabilirsin.</p>
-                </div>
-                <div id="deck-counts"
-                    style="display: flex; justify-content: center; gap: 16px; margin: 12px 0; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 0.85rem;">
-                    <span style="color: #fbbf24;">🏗️ Bina: <strong id="deck-count-bina">0</strong></span>
-                    <span style="color: #ef4444;">⚔️ Asker: <strong id="deck-count-asker">0</strong></span>
-                    <span style="color: #8b5cf6;">🎭 Diplomasi: <strong id="deck-count-diplomasi">0</strong></span>
-                    <span style="color: #10b981;">🔬 Teknoloji: <strong id="deck-count-teknoloji">0</strong></span>
-                </div>
-                <!-- Renderer buraya kartları basacak -->
-                <div id="market-cards" class="market-grid"></div>
+            </section>
+
+            <!-- Sağ Panel: Oyuncular 5-8 -->
+            <aside id="panel-right" class="side-panel">
+                <div id="players-right" class="players-list"></div>
+            </aside>
+
+        </div>
+
+        <!-- ── EL PANELİ (Alt) ─────────────────────────────────────────────── -->
+        <div id="hand-panel">
+            <div class="hand-panel-header">
+                <span class="hand-label">🃏 Elin</span>
+                <span id="hand-count" class="hand-count">0 kart</span>
             </div>
-        </dialog>
+            <div id="hand-cards" class="hand-cards"></div>
+        </div>
 
-        <dialog id="event-modal" class="modal">
-            <!-- Event UI -->
-        </dialog>
-
-        <!-- Dice Animation -->
-        <div class="dice-backdrop" id="dice-backdrop"></div>
-        <div class="dice-container" id="dice-container">
-            <div class="dice-label" id="dice-label">Zar Atılıyor...</div>
-            <div class="dice-box">
-                <div class="dice attacker" id="dice-attacker">?</div>
-                <div class="dice defender" id="dice-defender">?</div>
+        <!-- ── PAZAR MODAL ────────────────────────────────────────────────── -->
+        <div id="market-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;">
+            <div id="market-modal" class="market-modal-box">
+                <!-- Başlık -->
+                <div class="mkt-header">
+                    <div class="mkt-title">🏪 Pazar Yeri</div>
+                    <div class="mkt-info">
+                        <div class="mkt-gold">💰 <span id="market-player-gold">0</span> Altın</div>
+                        <div class="mkt-deck" id="deck-counts">
+                            <span class="deck-tag bina">🏗️ <span id="deck-count-bina">0</span></span>
+                            <span class="deck-tag asker">⚔️ <span id="deck-count-asker">0</span></span>
+                            <span class="deck-tag diplo">🎭 <span id="deck-count-diplomasi">0</span></span>
+                            <span class="deck-tag tech">🔬 <span id="deck-count-teknoloji">0</span></span>
+                        </div>
+                    </div>
+                    <div class="mkt-actions">
+                        <button id="refresh-market-btn" class="mkt-refresh-btn">
+                            🔄 Yenile
+                            <span id="refresh-badge-count" class="mkt-badge">2</span>
+                        </button>
+                        <button id="close-market-btn" class="mkt-close-btn" title="Kapat (Esc)">✕</button>
+                    </div>
+                </div>
+                <!-- Kartlar -->
+                <div id="market-cards" class="mkt-cards-area"></div>
             </div>
         </div>
 
-    </div>
+        <!-- ── LOG PANELİ ─────────────────────────────────────────────────── -->
+        <div id="log-panel" class="log-panel">
+            <div class="log-toggle" id="log-toggle">📜 Olay Günlüğü</div>
+            <div id="log-content" class="log-content" style="display:none"></div>
+        </div>
+
+    </div><!-- #app -->
 
     <script type="module" src="./js/main.js"></script>
+    <script>
+        // Service Worker kaydı
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
+        // Log paneli toggle
+        document.getElementById('log-toggle').addEventListener('click', () => {
+            const c = document.getElementById('log-content');
+            c.style.display = c.style.display === 'none' ? 'block' : 'none';
+        });
+    </script>
 </body>
-
 </html>
