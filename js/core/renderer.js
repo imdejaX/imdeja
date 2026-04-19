@@ -19,14 +19,7 @@ export class Renderer {
             subtitle: document.getElementById('subtitle'),
         };
 
-        // Eski HTML uyumu: el/log container'ları yoksa oluştur
-        if (!this.containers.hand) {
-            const handDiv = document.createElement('div');
-            handDiv.id = 'hand-cards';
-            handDiv.className = 'hand-zone';
-            (document.getElementById('hand-panel') || document.body).appendChild(handDiv);
-            this.containers.hand = handDiv;
-        }
+        // hand container artık market modal içinde — DOM'da var, oluşturmaya gerek yok
 
         if (!this.containers.logs) {
             const logDiv = document.createElement('div');
@@ -444,48 +437,84 @@ export class Renderer {
             ? this.game.players.find(pl => pl.id === p.masterId)?.name
             : null;
 
+        // Saray (index 0) ayrı, diğer binalar ikon olarak
+        const saray = p.grid[0];
+        const sarayHp = saray ? saray.hp : 0;
+        const sarayMaxHp = 10;
+        const sarayHpPct = saray ? Math.max(0, sarayHp / sarayMaxHp) : 0;
+        const sarayHpColor = sarayHpPct > 0.6 ? '#22c55e' : sarayHpPct > 0.3 ? '#f59e0b' : '#ef4444';
+        const sarayCivils = saray?.garrison?.length ?? 0;
+
+        // Diğer binalar (index 1+), grid index bilgisiyle
+        const otherBuildings = p.grid.slice(1).map((cell, i) => ({ cell, gridIdx: i + 1 })).filter(e => e.cell);
+        const emptySlots = p.grid.slice(1).filter(c => !c).length;
+        // Panel genişliğinde 2 satır sığar (4 chip/satır = 8 max görünür)
+        const MAX_CHIPS = 8;
+        const visibleBuildings = otherBuildings.slice(0, MAX_CHIPS);
+        const hiddenCount = otherBuildings.length - MAX_CHIPS;
+
+        // Kışla askerleri toplam
+        let totalSoldiers = 0;
+        p.grid.forEach(cell => {
+            if (cell?.type === 'Kışla' && cell.garrison) totalSoldiers += cell.garrison.length;
+        });
+
+        // HP bar width hesaplama
+        const sarayHpW = Math.round(sarayHpPct * 100);
+
         div.innerHTML = `
             <div class="pc-header">
                 <div class="pc-color-dot"></div>
                 <div class="pc-name">${p.isBot ? '🤖 ' : ''}${p.name}${isActive ? ' 👑' : ''}${p.isVassal ? ' ⛓️' : ''}</div>
-                <div class="pc-tech" style="font-size:0.65rem; color:#94a3b8; white-space:nowrap;">
-                    ⚔️${p.technologies.military} 🛡️${p.technologies.defense} 📈${p.technologies.commerce}
-                </div>
+                <div class="pc-tech">⚔️${p.technologies.military} 🛡️${p.technologies.defense} 📈${p.technologies.commerce}</div>
             </div>
+
             ${p.isVassal && masterName ? `<div class="pc-vassal-badge">⛓️ ${masterName}</div>` : ''}
             ${allyName ? `<div class="pc-ally-badge">🤝 ${allyName}</div>` : ''}
             ${p.whiteFlagTurns > 0 ? `<div class="pc-flag-badge">🏳️ Barış (${p.whiteFlagTurns})</div>` : ''}
-            <div class="pc-resources">
-                <span>💰 ${p.gold}</span>
-                <span>👥 ${(() => { try { const i = this.game.getCapacityInfo(p); return `${i.totalPop}/${i.capacity}`; } catch(e) { return p.pop || 0; } })()}</span>
-                <span>⚡ ${p.actionsRemaining}</span>
-                <span>🎯 ${p.dp}</span>
+
+            <!-- Saray -->
+            <div class="pc-palace-block" data-pid="${p.id}">
+                <div class="pc-palace-left">
+                    <div class="pc-palace-big-icon" style="filter:drop-shadow(0 0 6px ${sarayHpColor})">🏰</div>
+                    <div class="pc-palace-dp" style="color:${p.dp >= 5 ? '#fbbf24' : '#64748b'}">🎯${p.dp}</div>
+                </div>
+                <div class="pc-palace-info">
+                    <div class="pc-palace-label">
+                        <span style="font-family:var(--font-heading);font-size:0.72rem;color:#e2e8f0">Saray</span>
+                        <span class="pc-hp-text" style="color:${sarayHpColor}">❤️ ${sarayHp}/${sarayMaxHp}</span>
+                        <span class="pc-civil">👤${sarayCivils}</span>
+                    </div>
+                    <div class="pc-hp-bar-wrap">
+                        <div class="pc-hp-bar-fill" style="width:${sarayHpW}%;background:${sarayHpColor}"></div>
+                    </div>
+                    <div class="pc-resources">
+                        <span>💰 ${p.gold}</span>
+                        <span>👥 ${(() => { try { const i = this.game.getCapacityInfo(p); return `${i.totalPop}/${i.capacity}`; } catch(e) { return p.pop || 0; } })()}</span>
+                        <span>⚡ ${p.actionsRemaining}</span>
+                    </div>
+                </div>
             </div>
-            <div class="kingdom-grid${p.whiteFlagTurns > 0 ? ' white-flag-active' : ''}">
-                ${p.grid.map((cell, idx) => {
-                    let effectivePower = cell ? (cell.power || 0) : 0;
-                    if (cell && effectivePower > 0) {
-                        const defMul = [1, 1.2, 1.5, 2, 2.5];
-                        effectivePower = Math.floor(effectivePower * defMul[p.technologies.defense]);
-                        if (p.grid.some(c => c && c.type === 'Duvar')) effectivePower += 5;
-                    }
-                    return `
-                        <div class="grid-cell ${cell?.type === 'Saray' ? 'meclis' : ''} ${cell ? 'occupied' : 'empty'}"
-                            data-pid="${p.id}" data-idx="${idx}">
-                            ${cell ? `
-                                <div class="cell-content">
-                                    <span class="icon">${this.getBuildingIcon(cell.type)}</span>
-                                    <div class="cell-label" style="font-size:0.6rem;">${cell.type}</div>
-                                    <div class="cell-stats" style="font-size:0.6rem;">
-                                        <span>❤️${cell.hp || '-'}</span>
-                                        ${cell.power ? `<span>🛡️${effectivePower}</span>` : ''}
-                                        ${cell.garrison && (cell.type === 'Kışla' || cell.type === 'Saray') ? `<span>👥${cell.garrison.length}</span>` : ''}
-                                    </div>
-                                </div>
-                            ` : `<span class="slot-empty" style="color:#374151;">□</span>`}
-                        </div>`;
+
+            <!-- Diğer binalar ikon satırı (max 2 satır = 8 chip) -->
+            <div class="pc-buildings-row">
+                ${visibleBuildings.map(({ cell, gridIdx }) => {
+                    const icon = this.getBuildingIcon(cell.type);
+                    const soldiers = cell.type === 'Kışla' && cell.garrison ? cell.garrison.length : null;
+                    const damaged = cell.hp < (cell.type === 'Kışla' ? 6 : 5);
+                    return `<div class="pc-bld-chip" data-grid-idx="${gridIdx}" title="${cell.type} ❤️${cell.hp}${soldiers !== null ? ' 👥' + soldiers : ''}">
+                        <span>${icon}</span>
+                        ${damaged ? `<span class="pc-bld-hp">❤️${cell.hp}</span>` : ''}
+                        ${soldiers !== null ? `<span class="pc-bld-soldiers">⚔️${soldiers}</span>` : ''}
+                    </div>`;
                 }).join('')}
+                ${hiddenCount > 0
+                    ? `<div class="pc-bld-more" title="${hiddenCount} bina daha">+${hiddenCount}</div>`
+                    : emptySlots > 0
+                        ? `<div class="pc-bld-empty" title="${emptySlots} boş slot">+${emptySlots} boş</div>`
+                        : ''}
             </div>
+
             ${isActive ? `
                 <div class="action-mode-panel">
                     <button class="action-mode-btn demolish ${this.game.actionMode === 'demolish' ? 'active' : ''}" data-mode="demolish">🔨 Yık</button>
@@ -493,10 +522,10 @@ export class Renderer {
                 </div>
             ` : ''}
             ${isActive && p.allianceWith ? `
-                <button class="btn-diplo btn-break-alliance" style="width:100%;margin-top:4px;font-size:0.7rem;padding:5px;background:#dc2626;color:white;border:none;cursor:pointer;border-radius:4px;">💔 İttifak Boz</button>
+                <button class="btn-diplo btn-break-alliance">💔 İttifak Boz</button>
             ` : ''}
             ${!isActive && !p.allianceWith && !p.isVassal && !this.game.getActivePlayer().isVassal && !this.game.getActivePlayer().allianceWith && this.game.players.length >= 3 ? `
-                <button class="btn-diplo btn-propose-alliance" style="width:100%;margin-top:4px;font-size:0.7rem;padding:5px;background:#059669;color:white;border:none;cursor:pointer;border-radius:4px;">🤝 İttifak</button>
+                <button class="btn-diplo btn-propose-alliance">🤝 İttifak Kur</button>
             ` : ''}
         `;
         return div;
@@ -536,52 +565,47 @@ export class Renderer {
             };
         }
 
-        div.querySelectorAll('.grid-cell').forEach(cell => {
-            cell.addEventListener('click', () => {
-                const pid = parseInt(cell.dataset.pid);
-                const idx = parseInt(cell.dataset.idx);
+        // Diplomasi hedef — oyuncu kartına (palace-row veya karta) tıklayınca
+        div.addEventListener('click', (e) => {
+            // Buton tıklamalarını geçir
+            if (e.target.closest('button')) return;
+
+            const active = this.game.getActivePlayer();
+
+            if (this.game.pendingDiplomacyCard && p.id !== active.id) {
+                const { cardIndex } = this.game.pendingDiplomacyCard;
+                const result = this.game.playDiplomacyCard(cardIndex, p.id);
+                if (result.success === false) alert(result.msg);
+                this.game.pendingDiplomacyCard = null;
+                this.render();
+                return;
+            }
+
+            // Saldırı modu — rakip oyuncu kartına tıkla
+            if (this.game.actionMode === 'attack' && p.id !== active.id) {
+                // Rakibin Saray'ına saldır (idx=0)
+                let result = this.game.initiateAttack(p.id, 0);
+                if (result.requiresConfirmation) {
+                    if (confirm(result.msg)) result = this.game.initiateAttack(p.id, 0, true);
+                    else { this.render(); return; }
+                }
+                if (result.success === false) alert(result.msg);
+                else if (result.waitingForDice) this.showDicePrompt();
+                this.render();
+            }
+        });
+
+        // Yıkım modu — bina ikonuna tıklayınca
+        div.querySelectorAll('.pc-bld-chip').forEach(chip => {
+            chip.addEventListener('click', (e) => {
+                e.stopPropagation();
                 const active = this.game.getActivePlayer();
-
-                if (this.game.pendingDiplomacyCard) {
-                    if (pid !== active.id) {
-                        const { cardIndex } = this.game.pendingDiplomacyCard;
-                        const result = this.game.playDiplomacyCard(cardIndex, pid);
-                        if (result.success === false) alert(result.msg);
-                        this.game.pendingDiplomacyCard = null;
-                    } else {
-                        this.game.pendingDiplomacyCard = null;
-                    }
-                    this.render(); return;
-                }
-
-                if (this.game.actionMode === 'demolish') {
-                    if (pid === active.id) {
-                        const result = this.game.demolishBuilding(idx);
-                        if (result.success === false) alert(result.msg);
-                        this.render();
-                    } else alert('Sadece kendi binalarını yıkabilirsin!');
-                    return;
-                }
-
-                if (this.game.actionMode === 'attack') {
-                    if (pid !== active.id) {
-                        let result = this.game.initiateAttack(pid, idx);
-                        if (result.requiresConfirmation) {
-                            if (confirm(result.msg)) result = this.game.initiateAttack(pid, idx, true);
-                            else { this.render(); return; }
-                        }
-                        if (result.success === false) alert(result.msg);
-                        else if (result.waitingForDice) this.showDicePrompt();
-                        this.render();
-                    } else alert('Kendine saldıramazsın!');
-                    return;
-                }
-
-                if (pid === active.id) {
-                    const result = this.game.buildOnSlot(idx);
-                    if (result.success === false) console.log(result.msg);
-                    this.render();
-                }
+                if (this.game.actionMode !== 'demolish') return;
+                if (p.id !== active.id) { alert('Sadece kendi binalarını yıkabilirsin!'); return; }
+                const gridIdx = parseInt(chip.dataset.gridIdx);
+                const result = this.game.demolishBuilding(gridIdx);
+                if (result.success === false) alert(result.msg);
+                this.render();
             });
         });
     }
@@ -679,32 +703,89 @@ export class Renderer {
     renderHand() {
         const player = this.game.getActivePlayer();
         const handContainer = this.containers.hand;
-        handContainer.innerHTML = '<div class="hand-row"></div>';
-        const row = handContainer.querySelector('.hand-row');
+        if (!handContainer) return;
 
         // Kart sayısını güncelle
         const countEl = document.getElementById('hand-count');
         if (countEl) countEl.textContent = `${player.hand.length} kart`;
 
+        // Log turn badge
+        const badge = document.getElementById('log-turn-badge');
+        if (badge) badge.textContent = `Tur ${this.game.turn}`;
+
+        if (player.hand.length === 0) {
+            handContainer.innerHTML = '<div class="mkt-hand-empty">Elinde kart yok — pazardan kart satın al</div>';
+            // Eski pending pill'leri temizle
+            handContainer.parentElement.querySelectorAll('.pending-card-pill').forEach(p => p.remove());
+            return;
+        }
+
+        handContainer.innerHTML = '';
+        // Eski pending pill'leri temizle
+        handContainer.parentElement.querySelectorAll('.pending-card-pill').forEach(p => p.remove());
+
+        const CARD_META = {
+            'Bina':        { icon: '🏗️', badge: 'bina',     hint: 'Tıkla → krallığına otomatik inşa edilir' },
+            'Asker':       { icon: '⚔️', badge: 'asker',    hint: 'Tıkla → Kışla garrison\'una otomatik eklenir' },
+            'Diplomasi':   { icon: '🎭', badge: 'diplo',    hint: 'Tıkla → hedef oyuncuyu seç (panel üzerinden)' },
+            'Teknoloji':   { icon: '🔬', badge: 'tech',     hint: 'Tıkla → araştırılır' },
+            'Paralı Asker':{ icon: '💰', badge: 'mercenary',hint: 'Tıkla → Kışla garrison\'una anında eklenir' },
+        };
+
+        // Diplomasi bekleme bildirimi
+        if (this.game.pendingDiplomacyCard) {
+            const pill = document.createElement('div');
+            pill.className = 'pending-card-pill';
+            pill.textContent = '🎭 Diplomasi kartı bekleniyor — oyuncu panelinden hedef oyuncuya tıkla · İptal için buraya tıkla';
+            pill.addEventListener('click', () => {
+                this.game.pendingDiplomacyCard = null;
+                this.renderHand();
+            });
+            handContainer.parentElement.insertBefore(pill, handContainer);
+        }
+
         player.hand.forEach((card, index) => {
             const isSelected = this.game.selectedCardIndex === index;
+            const isPending = this.game.pendingDiplomacyCard?.cardIndex === index;
+            const meta = CARD_META[card.type] || { icon: '🃏', badge: 'bina', hint: 'Karta tıkla' };
+
             const el = document.createElement('div');
-            el.className = `card hand-card ${isSelected ? 'selected' : ''}
-                            ${card.type === 'Diplomasi' ? 'diplomacy-card' : ''}
-                            ${card.type === 'Teknoloji' ? 'tech-card' : ''}
-                            ${card.effect === 'terror_joker' ? 'terror-joker' : ''}`;
+            el.className = [
+                'hand-card',
+                isSelected || isPending ? 'selected' : '',
+                card.type === 'Diplomasi' ? 'diplomacy-card' : '',
+                card.type === 'Teknoloji' ? 'tech-card' : '',
+            ].filter(Boolean).join(' ');
+
             el.innerHTML = `
-                <div class="card-title">${card.name}</div>
-                <div class="card-type">${card.type === 'Bina' ? '🏭' :
-                    card.type === 'Asker' ? '⚔️' :
-                    card.type === 'Diplomasi' ? '🎭 DP:' + card.dp :
-                    card.type === 'Teknoloji' ? `🔬 Lv${card.level}` : ''
-                }</div>
-                ${card.type === 'Teknoloji' ? `<div style="font-size:0.6rem; color:#666;">👥${card.popCost}</div>` : ''}
+                <span class="hc-icon">${meta.icon}</span>
+                <div class="hc-body">
+                    <div class="hc-name">${card.name}${card.type === 'Teknoloji' && card.level ? ` Lv${card.level}` : ''}${card.type === 'Diplomasi' && card.dp ? ` (DP:${card.dp})` : ''}</div>
+                    <div class="hc-hint">${meta.hint}</div>
+                </div>
+                <span class="hc-badge ${meta.badge}">${card.type}</span>
             `;
 
             el.addEventListener('click', () => {
-                if (card.type === 'Diplomasi') {
+                if (card.type === 'Bina') {
+                    // Doğrudan otomatik slota yerleştir
+                    const result = this.game.buildBuilding(index);
+                    if (result.success === false) {
+                        alert(result.msg);
+                    } else {
+                        this.render();
+                    }
+
+                } else if (card.type === 'Asker') {
+                    // Doğrudan Kışla'ya ekle
+                    const result = this.game.playAskerCard(index);
+                    if (result.success === false) {
+                        alert(result.msg);
+                    } else {
+                        this.render();
+                    }
+
+                } else if (card.type === 'Diplomasi') {
                     const needsTarget = card.effect &&
                         card.effect !== 'gold_boost' &&
                         card.effect !== 'military_boost' &&
@@ -717,18 +798,24 @@ export class Renderer {
                             if (result.success === false) alert(result.msg);
                             this.render();
                         } else {
+                            // Market kapat, oyuncu panelinde hedef seçmesini bekle
                             this.game.pendingDiplomacyCard = { cardIndex: index, card };
-                            this.render();
+                            if (this.game.onDiplomacyTargetNeeded) {
+                                this.game.onDiplomacyTargetNeeded(card.name);
+                            }
+                            this.renderHand();
                         }
                     } else {
                         const result = this.game.playDiplomacyCard(index, null);
                         if (result.success === false) alert(result.msg);
                         this.render();
                     }
+
                 } else if (card.type === 'Paralı Asker') {
                     const result = this.game.playMercenaryCard(index);
                     if (result.success === false) alert(result.msg);
-                    this.render();
+                    else this.render();
+
                 } else if (card.type === 'Teknoloji') {
                     const result = this.game.playTechnologyCard(index);
                     if (result.success === false) {
@@ -740,13 +827,10 @@ export class Renderer {
                     } else {
                         this.render();
                     }
-                } else {
-                    this.game.selectHandCard(index);
-                    this.render();
                 }
             });
 
-            row.appendChild(el);
+            handContainer.appendChild(el);
         });
     }
 }

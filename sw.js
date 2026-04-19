@@ -1,4 +1,4 @@
-const CACHE = 'kral-v2';
+const CACHE = 'kral-v16';
 const ASSETS = [
   '/', '/menu.html', '/game.html',
   '/map.css', '/menu-style.css',

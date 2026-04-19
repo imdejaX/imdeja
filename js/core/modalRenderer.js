@@ -15,90 +15,75 @@ export const ModalRendererMixin = {
     },
 
     showDicePrompt() {
-        let prompt = document.getElementById('dice-roll-prompt');
-        if (!prompt) {
-            prompt = document.createElement('div');
-            prompt.id = 'dice-roll-prompt';
-            prompt.className = 'dice-prompt';
-            prompt.innerHTML = `
-                <div class="dice-prompt-content">
-                    <h2>🎲 Zar At</h2>
-                    <p>Saldırı için zar atmaya hazır mısın?</p>
-                    <div style="display: flex; gap: 10px; justify-content: center;">
-                        <button id="roll-dice-btn" class="btn btn-primary">🎲 Zar At!</button>
-                        <button id="cancel-dice-btn" class="btn btn-secondary" style="background: #6b7280; color: white;">❌ Vazgeç</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(prompt);
+        if (!this.game.pendingAttack) return;
 
-            document.getElementById('roll-dice-btn').addEventListener('click', async () => {
-                try {
-                    window.soundManager.playDiceRoll();
+        const overlay   = document.getElementById('dice-overlay');
+        const label     = document.getElementById('dice-overlay-label');
+        const nameAtk   = document.getElementById('dice-attacker-name');
+        const nameDef   = document.getElementById('dice-defender-name');
+        const faceAtk   = document.getElementById('dice-face-attacker');
+        const faceDef   = document.getElementById('dice-face-defender');
+        if (!overlay) return;
 
-                    const diceRoll = this.game.prepareAttackDice();
-                    if (!diceRoll) {
-                        alert("Bekleyen saldırı verisi bulunamadı!");
-                        this.game.clearActionMode();
-                        this.render();
-                        return;
-                    }
+        const attacker = this.game.players.find(p => p.id === this.game.pendingAttack.attackerId);
+        const defender = this.game.players.find(p => p.id === this.game.pendingAttack.targetPlayerId);
 
-                    prompt.style.display = 'none';
-                    this.showDiceRoll(diceRoll);
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+        if (label)   label.textContent   = `${attacker?.name || '?'} ⚔️ ${defender?.name || '?'}`;
+        if (nameAtk) nameAtk.textContent = attacker?.name || '?';
+        if (nameDef) nameDef.textContent = defender?.name || '?';
+        if (faceAtk) { faceAtk.textContent = '🎲'; faceAtk.classList.add('rolling'); }
+        if (faceDef) { faceDef.textContent = '🎲'; faceDef.classList.add('rolling'); }
 
-                    const result = await this.game.rollDiceForAttack();
-                    if (result.success) {
-                        this.render();
-                    } else {
-                        console.error("Attack failed logic:", result.msg);
-                        this.game.clearActionMode();
-                        this.render();
-                    }
-                } catch (err) {
-                    console.error("Dice Roll Error:", err);
-                    alert("Saldırı sırasında hata oluştu: " + err.message);
-                    this.game.clearActionMode();
-                    this.game.pendingAttack = null;
-                    this.render();
-                }
-            });
-
-            document.getElementById('cancel-dice-btn').addEventListener('click', () => {
+        // İptal butonu ekle (ilk açılışta)
+        let cancelBtn = overlay.querySelector('.dice-cancel-btn');
+        if (!cancelBtn) {
+            cancelBtn = document.createElement('button');
+            cancelBtn.className = 'dice-cancel-btn';
+            cancelBtn.textContent = '❌ Vazgeç';
+            overlay.querySelector('.dice-overlay-content')?.appendChild(cancelBtn);
+            cancelBtn.addEventListener('click', () => {
                 this.game.pendingAttack = null;
                 this.game.clearActionMode();
-                prompt.style.display = 'none';
+                overlay.classList.remove('active');
+                this._lockInput(false);
                 this.render();
             });
         }
+        cancelBtn.style.display = 'block';
 
-        prompt.style.display = 'flex';
+        overlay.classList.add('active');
+        // Harita ve panelleri tıklamaya kapat
+        this._lockInput(true);
+        if (window.soundManager) window.soundManager.playDiceRoll();
+
+        // Zarları 700ms sonra göster
+        const diceRoll = this.game.prepareAttackDice();
+        setTimeout(() => {
+            if (faceAtk) { faceAtk.classList.remove('rolling'); faceAtk.textContent = diceRoll?.attacker ?? '?'; }
+            if (faceDef) { faceDef.classList.remove('rolling'); faceDef.textContent = diceRoll?.defender ?? '?'; }
+        }, 700);
+
+        // 2 saniye sonra sonucu uygula
+        setTimeout(async () => {
+            cancelBtn.style.display = 'none';
+            overlay.classList.remove('active');
+            try {
+                const result = await this.game.rollDiceForAttack();
+                if (!result?.success) console.error('Attack result:', result?.msg);
+            } catch (err) {
+                console.error('Dice error:', err);
+                this.game.clearActionMode();
+                this.game.pendingAttack = null;
+            }
+            this._lockInput(false);
+            this.render();
+            if (window.mapRenderer) window.mapRenderer.render();
+        }, 2200);
     },
 
     showDiceRoll(diceData) {
-        const backdrop = document.getElementById('dice-backdrop');
-        const container = document.getElementById('dice-container');
-        const label = document.getElementById('dice-label');
-        const attackerDice = document.getElementById('dice-attacker');
-        const defenderDice = document.getElementById('dice-defender');
-
-        backdrop.classList.add('active');
-        container.classList.add('active');
-        label.textContent = `${diceData.attackerName} vs ${diceData.defenderName}`;
-
-        attackerDice.textContent = '?';
-        defenderDice.textContent = '?';
-
-        setTimeout(() => {
-            attackerDice.textContent = diceData.attacker;
-            defenderDice.textContent = diceData.defender;
-        }, 300);
-
-        setTimeout(() => {
-            backdrop.classList.remove('active');
-            container.classList.remove('active');
-        }, 2000);
+        // showDicePrompt ile birleştirildi — bu metod artık kullanılmıyor
+        // Yine de geriye dönük uyumluluk için bırakıldı
     },
 
     showAttackNotification(attackInfoArray) {
@@ -267,6 +252,62 @@ export const ModalRendererMixin = {
         modal.style.display = 'flex';
         void modal.offsetWidth;
         modal.classList.add('show');
+    },
+
+    _lockInput(lock) {
+        // SVG harita
+        const svg = document.getElementById('game-map');
+        if (svg) svg.style.pointerEvents = lock ? 'none' : '';
+
+        // Oyuncu panelleri
+        ['players-left', 'players-right'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.pointerEvents = lock ? 'none' : '';
+        });
+
+        // Eylem butonları
+        ['end-turn-btn', 'market-btn'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.disabled = lock;
+        });
+    },
+
+    showDiplomacyEffect({ card, playerName, playerColor, targetName, targetColor }) {
+        const DIPLO_META = {
+            'steal_card':      { icon: '🕵️', label: 'Casusluk',       color: '#60a5fa', desc: (t) => `${t}'den kart çalındı` },
+            'steal_unit':      { icon: '📢', label: 'Propaganda',     color: '#a855f7', desc: (t) => `${t}'den asker devşirildi` },
+            'military_boost':  { icon: '⚔️', label: 'Askeri Gösteri', color: '#ef4444', desc: () => 'Sonraki saldırıya +3 güç bonusu' },
+            'gold_boost':      { icon: '💰', label: 'Altın Hamlesi',  color: '#fbbf24', desc: () => '+3 Altın kazanıldı' },
+            'white_flag':      { icon: '🏳️', label: 'Beyaz Bayrak',   color: '#e2e8f0', desc: () => '1 tur saldırı koruması' },
+            'repair_building': { icon: '🔨', label: 'Mimari Onarım',  color: '#4ade80', desc: () => 'Hasarlı bina onarıldı' },
+            'break_alliance':  { icon: '🌪️', label: 'Nifak Tohumu',   color: '#f97316', desc: (t) => `${t}'in ittifakı bozuldu` },
+            'terror_joker':    { icon: '💣', label: 'Terör Jokeri',   color: '#dc2626', desc: (t) => `${t}'in bir binası yıkıldı` },
+            'assassination':   { icon: '🗡️', label: 'Suikast',        color: '#7c3aed', desc: (t) => `${t}'e suikast girişimi` },
+        };
+
+        const meta = DIPLO_META[card.effect] || { icon: '🎭', label: card.name, color: '#a78bfa', desc: () => 'Etki uygulandı' };
+
+        document.getElementById('diplo-effect-modal')?.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'diplo-effect-modal';
+        modal.className = 'diplo-overlay';
+        modal.innerHTML = `
+            <div class="diplo-modal" style="--diplo-color:${meta.color}">
+                <div class="diplo-icon">${meta.icon}</div>
+                <div class="diplo-card-name">${meta.label}</div>
+                <div class="diplo-players">
+                    <span style="color:${playerColor};font-weight:700">${playerName}</span>
+                    ${targetName ? `<span class="diplo-arrow">→</span><span style="color:${targetColor};font-weight:700">${targetName}</span>` : ''}
+                </div>
+                <div class="diplo-desc">${meta.desc(targetName || '')}</div>
+                ${card.dp > 0 ? `<div class="diplo-dp-badge">+${card.dp} DP</div>` : ''}
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        modal.addEventListener('click', () => modal.remove());
+        setTimeout(() => { modal.classList.add('diplo-closing'); setTimeout(() => modal.remove(), 300); }, 3500);
     },
 
     showGameOver(winner) {

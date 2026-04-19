@@ -95,6 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (el('deck-count-teknoloji')) el('deck-count-teknoloji').textContent = deckCounts['Teknoloji'] ?? 0;
 
         renderer.renderMarket();
+        renderer.renderHand();
         if (marketBackdrop) marketBackdrop.style.display = 'flex';
         soundManager.playModalOpen();
     }
@@ -159,13 +160,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cancelActionBtn) {
         cancelActionBtn.addEventListener('click', () => {
             game.clearActionMode();
+            _updateActionPill(null);
             renderer.render();
             if (mapRenderer) mapRenderer.render();
         });
     }
 
     // ── Eylem Modu Pill Güncellemesi ───────────────────────────────────────
-    // renderer.setActionMode çağrıldığında pill gösterilir
     const origSetActionMode = game.setActionMode.bind(game);
     game.setActionMode = function(mode) {
         origSetActionMode(mode);
@@ -178,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mapRenderer) mapRenderer.render();
     };
 
-    function _updateActionPill(mode) {
+    function _updateActionPill(mode, extra = '') {
         const pill = document.getElementById('action-mode-pill');
         const text = document.getElementById('action-mode-text');
         if (!pill || !text) return;
@@ -190,18 +191,31 @@ document.addEventListener('DOMContentLoaded', () => {
         pill.style.display = 'flex';
         pill.className = 'action-mode-pill ' + mode;
         const labels = {
-            attack: '⚔️ Saldırı modu — haritada hedef seç',
+            attack:   '⚔️ Saldırı modu — haritada hedef seç',
             demolish: '🔨 Yıkım modu — binayı seç',
-            build: '🏗️ İnşaat modu — konum seç'
+            build:    `🏗️ ${extra || 'Bina'} seçildi — oyuncu panelinde boş hücreye tıkla`,
+            diplo:    `🎭 ${extra || 'Diplomasi'} — oyuncu panelinde hedef oyuncuya tıkla`,
         };
         text.textContent = labels[mode] || mode;
     }
+
+    // Diplomasi kartı hedef beklediğinde: market kapat + pill göster
+    game.onDiplomacyTargetNeeded = (cardName) => {
+        closeMarket();
+        _updateActionPill('diplo', cardName);
+    };
+
+    // Diplomasi kartı oynandığında popup göster
+    game.onDiplomacyEffect = (data) => {
+        if (renderer.showDiplomacyEffect) renderer.showDiplomacyEffect(data);
+    };
 
     // ── Klavye Kısayolları ─────────────────────────────────────────────────
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeMarket();
-            game.clearActionMode();
+            game.clearActionMode(); // selectedCardIndex ve pendingDiplomacyCard da sıfırlanır
+            _updateActionPill(null);
             renderer.render();
             if (mapRenderer) mapRenderer.render();
         }

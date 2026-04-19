@@ -9,6 +9,11 @@ export const CombatMixin = {
         const attacker = this.getActivePlayer();
         const defender = this.players.find(p => p.id === targetPlayerId);
 
+        // Saldırı zaten devam ediyorsa yeni saldırı başlatma
+        if (this.pendingAttack) return { success: false, msg: "Önceki saldırı tamamlanmadan yeni saldırı başlatılamaz!" };
+        if (this.isRollingDice) return { success: false, msg: "Zar atılıyor, lütfen bekleyin..." };
+        if (this.isCalculatingCombat) return { success: false, msg: "Muharebe hesaplanıyor..." };
+
         if (attacker.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
         if (attacker.id === defender.id) return { success: false, msg: "Kendine saldıramazsın!" };
 
@@ -79,11 +84,21 @@ export const CombatMixin = {
         }
 
         if (targetCell.type === 'Saray') {
-            const hasDefenses = defender.grid.some(cell =>
-                cell && (cell.isUnit || cell.type === 'Duvar' || cell.type === 'Kışla')
-            );
-            if (hasDefenses) {
-                return { success: false, msg: "Önce savunma yapılarını yıkmalısın! (Asker/Duvar/Kışla)" };
+            // Kışla varsa önce Kışla'ya otomatik yönlendir
+            const kışlaEntry = defender.grid
+                .map((cell, idx) => ({ cell, idx }))
+                .find(({ cell }) => cell && cell.type === 'Kışla');
+            if (kışlaEntry) {
+                this.log(`🎯 Saray korumalı! Saldırı Kışla'ya yönlendirildi.`);
+                return this.initiateAttack(targetPlayerId, kışlaEntry.idx, confirmed);
+            }
+            // Başka savunma birimi (isUnit) varsa ona yönlendir
+            const unitEntry = defender.grid
+                .map((cell, idx) => ({ cell, idx }))
+                .find(({ cell }) => cell && cell.isUnit);
+            if (unitEntry) {
+                this.log(`🎯 Saray korumalı! Saldırı ${unitEntry.cell.type}'ye yönlendirildi.`);
+                return this.initiateAttack(targetPlayerId, unitEntry.idx, confirmed);
             }
         }
 
@@ -178,7 +193,8 @@ export const CombatMixin = {
             const defenseMultipliers = [1, 1.2, 1.5, 2, 2.5];
             let techBoostedDefense = Math.floor((targetCell.power || 0) * defenseMultipliers[defenseTech]);
 
-            const hasWall = defender.grid.some(c => c && c.type === 'Duvar');
+            // Duvar'ın kendisi hedef alındığında kendi bonusunu sayma
+            const hasWall = defender.grid.some((c, i) => c && c.type === 'Duvar' && i !== targetSlotIndex);
             const wallBonus = hasWall ? 5 : 0;
             techBoostedDefense += wallBonus;
 
@@ -254,7 +270,7 @@ export const CombatMixin = {
                 }
             };
 
-            await this.showCombatCalculation({ ...combatData, skipAnimation: attacker.isBot });
+            await this.showCombatCalculation({ ...combatData, targetType: targetCell.type, skipAnimation: attacker.isBot });
 
             this.log(`⚔️ ZAR ATILDI! ${attacker.name} -> ${defender.name}`);
             if (hasDiversityBonus) this.log(`🎖️ Çeşitlilik Bonusu: +20% (Piyade, Okçu, Süvari, Kışla)`);
@@ -262,6 +278,8 @@ export const CombatMixin = {
             if (defenseTech > 0) this.log(`🛡️ Savunma Teknolojisi Lv${defenseTech}: ×${defenseMultipliers[defenseTech]}`);
             this.log(`Saldırı: ${attackPower} (Askeri %25: ${maxAttackPower}, Tek Bonus: ${techBoostedAttack - maxAttackPower}, Zar: ${attackRoll})`);
             this.log(`Savunma: ${defensePower} (Bina: ${targetCell.power || 0}, Tek Bonus: ${techBoostedDefense - (targetCell.power || 0)}, Askeri %20: ${defenderMilitaryBonus}, Zar: ${defenseRoll})`);
+
+            const powerDiff = Math.abs(attackPower - defensePower);
 
             if (attackPower > defensePower) {
                 const diff = attackPower - defensePower;
@@ -354,12 +372,30 @@ export const CombatMixin = {
                 } else {
                     this.log(`🛡️ ${defender.name}, ${targetCell.type} hasar aldı. Kalan HP: ${targetCell.hp}`);
                 }
+
+                // Muharebe kayıpları — saldırgan kazandı
+                this._applyBattleCasualties(attacker, defender, true, powerDiff);
+
             } else {
                 if (attacker.gold > 0) {
                     attacker.gold -= 1;
                     this.log(`💸 ${attacker.name} başarısız saldırı sonucu 1 Altın kaybetti!`);
                 }
                 this.lastAttackResult = { success: false, targetType: targetCell.type };
+
+                // Muharebe kayıpları — savunucu kazandı
+                this._applyBattleCasualties(attacker, defender, false, powerDiff);
+            }
+
+            // Harita animasyonu
+            if (this.onAttackAnimated) {
+                await this.onAttackAnimated(attacker.id, defender.id, {
+                    success: combatSuccess,
+                    damage: damageDealt,
+                    blocked: !combatSuccess,
+                    critical: damageDealt > 10,
+                    targetType: targetCell?.type
+                });
             }
 
             this.pendingAttack = null;
@@ -432,12 +468,14 @@ export const CombatMixin = {
     async showCombatCalculation(combatData) {
         try {
             this.isCalculatingCombat = true;
+            if (window.renderer?._lockInput) window.renderer._lockInput(true);
             const { combatCalculator } = await import('./combatCalculator.js');
             await combatCalculator.showCombatCalculation(combatData);
         } catch (error) {
             console.error('Failed to load combat calculator:', error);
         } finally {
             this.isCalculatingCombat = false;
+            if (window.renderer?._lockInput) window.renderer._lockInput(false);
         }
     },
 
@@ -545,6 +583,50 @@ export const CombatMixin = {
         }
     },
 
+    /**
+     * Muharebe sonrası her iki taraftan asker kaybı uygular.
+     * Güç farkı büyüdükçe kayıp sayısı artar.
+     * Yakın savaşta kazanan da kayıp verir.
+     */
+    _applyBattleCasualties(attacker, defender, attackerWon, powerDiff) {
+        // Kaybeden taraf: farka göre 1-5 asker
+        const loserLosses = powerDiff <= 5  ? 1
+                          : powerDiff <= 15 ? 2
+                          : powerDiff <= 30 ? 3
+                          : Math.min(5, Math.floor(powerDiff / 10));
+
+        // Kazanan taraf: sadece yakın savaşta (≤5 fark) 1 kayıp verir
+        const winnerLosses = powerDiff <= 5 ? 1 : 0;
+
+        const loser  = attackerWon ? defender : attacker;
+        const winner = attackerWon ? attacker : defender;
+
+        const loserLost  = this._removeGarrisonSoldiers(loser, loserLosses);
+        const winnerLost = winnerLosses > 0 ? this._removeGarrisonSoldiers(winner, winnerLosses) : 0;
+
+        if (loserLost > 0)  this.log(`💀 ${loser.name}: ${loserLost} asker muharebede hayatını kaybetti!`);
+        if (winnerLost > 0) this.log(`⚔️ ${winner.name}: ${winnerLost} asker çatışmada şehit düştü!`);
+    },
+
+    /**
+     * Kışla garrison'larından `count` kadar asker kaldırır.
+     * En zayıf (en düşük power) askerler önce gider.
+     * Kaç asker kaldırıldığını döndürür.
+     */
+    _removeGarrisonSoldiers(player, count) {
+        let removed = 0;
+        for (const cell of player.grid) {
+            if (!cell || cell.type !== 'Kışla' || !cell.garrison || cell.garrison.length === 0) continue;
+            // En düşük güçlü askerler önce kayıp verir
+            cell.garrison.sort((a, b) => (a.power || 0) - (b.power || 0));
+            const toRemove = Math.min(count - removed, cell.garrison.length);
+            cell.garrison.splice(0, toRemove);
+            removed += toRemove;
+            if (removed >= count) break;
+        }
+        return removed;
+    },
+
     calculateMercenaryCost(count) {
         if (count <= 10) return 1;
         if (count <= 20) return 2;
@@ -573,7 +655,11 @@ export const CombatMixin = {
         let hasBarracks = false;
         player.grid.forEach(cell => {
             if (cell && cell.isUnit && cell.name) soldierTypes.add(cell.name);
-            if (cell && cell.type === 'Kışla') hasBarracks = true;
+            if (cell && cell.type === 'Kışla') {
+                hasBarracks = true;
+                // Garrison askerlerini de çeşitlilik sayımına dahil et
+                if (cell.garrison) cell.garrison.forEach(s => { if (s.name) soldierTypes.add(s.name); });
+            }
         });
 
         const hasAllTypes = soldierTypes.has('Piyade') && soldierTypes.has('Okçu') &&

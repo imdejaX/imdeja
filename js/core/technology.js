@@ -11,20 +11,23 @@ export const TechnologyMixin = {
         const card = player.hand[handIndex];
         if (!card || card.type !== 'Teknoloji') return { success: false, msg: "Geçersiz kart!" };
 
-        const hasScienceCenter = player.grid.some(cell => cell && cell.type === 'Bilim Merkezi');
-        if (!hasScienceCenter) {
-            return { success: false, msg: "Teknoloji geliştirmek için 'Bilim Merkezi' binasına sahip olmalısınız!" };
-        }
-
-        let totalScientists = 0;
-        player.grid.forEach(cell => {
-            if (cell && cell.type === 'Bilim Merkezi' && cell.garrison) {
-                totalScientists += cell.garrison.length;
+        // Joker kartı Bilim Merkezi ve bilim insanı gerektirmez (10 altın maliyetiyle özel kart)
+        if (!card.isJoker) {
+            const hasScienceCenter = player.grid.some(cell => cell && cell.type === 'Bilim Merkezi');
+            if (!hasScienceCenter) {
+                return { success: false, msg: "Teknoloji geliştirmek için 'Bilim Merkezi' binasına sahip olmalısınız!" };
             }
-        });
 
-        if (totalScientists < card.popCost) {
-            return { success: false, msg: `Yetersiz Bilim İnsanı! ${card.popCost} gerekli. (Mevcut: ${totalScientists})` };
+            let totalScientists = 0;
+            player.grid.forEach(cell => {
+                if (cell && cell.type === 'Bilim Merkezi' && cell.garrison) {
+                    totalScientists += cell.garrison.length;
+                }
+            });
+
+            if (totalScientists < card.popCost) {
+                return { success: false, msg: `Yetersiz Bilim İnsanı! ${card.popCost} gerekli. (Mevcut: ${totalScientists})` };
+            }
         }
 
         let targetTechType = card.techType;

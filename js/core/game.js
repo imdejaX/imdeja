@@ -76,7 +76,7 @@ export class Game {
             militaryBoost: 0,
             whiteFlagTurns: 0,
             marketRefreshes: 0,
-            grid: Array(9).fill(null),
+            grid: Array(13).fill(null),
             hand: [],
             actionsRemaining: 2,
             attackedBy: []
@@ -335,6 +335,8 @@ export class Game {
 
     clearActionMode() {
         this.actionMode = null;
+        this.selectedCardIndex = null;
+        this.pendingDiplomacyCard = null;
     }
 
     // --- ACTIONS ---
@@ -358,7 +360,7 @@ export class Game {
 
         if (player.gold < card.cost) return { success: false, msg: "Yetersiz Altın!" };
 
-        if (card.type === 'Teknoloji') {
+        if (card.type === 'Teknoloji' && !card.isJoker) {
             const hasScienceCenter = player.grid.some(cell => cell && cell.type === 'Bilim Merkezi');
             if (!hasScienceCenter) {
                 return { success: false, msg: "Teknoloji geliştirmek için 'Bilim Merkezi' binasına sahip olmalısınız!" };
@@ -381,49 +383,103 @@ export class Game {
         this.selectedCardIndex = this.selectedCardIndex === index ? null : index;
     }
 
+    // Bina kartını otomatik olarak ilk boş slota yerleştirir
+    buildBuilding(handIndex) {
+        const player = this.getActivePlayer();
+        if (player.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
+
+        const card = player.hand[handIndex];
+        if (!card || card.type !== 'Bina') return { success: false, msg: "Bu bir Bina kartı değil!" };
+
+        // Slot 0 Saray'a ayrılmış — 1-8 arasında ilk boş slotu bul
+        const emptySlot = player.grid.findIndex((cell, idx) => idx > 0 && !cell);
+        if (emptySlot === -1) return { success: false, msg: "Tüm binalar dolu! (Maksimum 12 bina)" };
+
+        const newBuilding = {
+            type: card.name,
+            hp: card.hp || 3,
+            power: card.power || 0
+        };
+
+        if (card.name === 'Bilim Merkezi') {
+            newBuilding.garrison = [{ name: 'Bilim İnsanı', type: 'Nüfus', power: 0 }];
+            newBuilding.capacity = 5;
+            this.log(`🧪 Bilim Merkezi kuruldu! 1 Bilim İnsanı göreve başladı.`);
+        } else if (card.name === 'Kışla') {
+            newBuilding.garrison = [];
+        }
+
+        player.grid[emptySlot] = newBuilding;
+        player.actionsRemaining -= 1;
+        player.hand.splice(handIndex, 1);
+        this.selectedCardIndex = null;
+
+        this.log(`🏗️ ${player.name}, ${card.name} inşa etti.`);
+        this.checkAutoEndTurn();
+        return { success: true };
+    }
+
+    // Asker kartını doğrudan Kışla garrison'una ekler
+    playAskerCard(handIndex) {
+        const player = this.getActivePlayer();
+        if (player.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
+        const card = player.hand[handIndex];
+        if (!card || card.type !== 'Asker') return { success: false, msg: "Geçersiz kart!" };
+
+        const hasBarracks = player.grid.some(c => c && c.type === 'Kışla');
+        if (!hasBarracks) return { success: false, msg: "Asker konuşlandırmak için Kışla gerekli!" };
+
+        const soldier = { name: card.name, type: 'Asker', power: card.power || 2, hp: card.hp || 3 };
+        const result = this.addSoldiersToPlayer(player, [soldier]);
+
+        if (result.added === 0 && result.overflow > 0) {
+            return { success: false, msg: "Kışlalarda yer yok! (Kapasite: 15/kışla)" };
+        }
+
+        player.actionsRemaining -= 1;
+        player.hand.splice(handIndex, 1);
+        this.log(`⚔️ ${player.name}, ${card.name} kışlaya konuşlandırdı!`);
+        this.checkAutoEndTurn();
+        return { success: true };
+    }
+
     buildOnSlot(slotIndex) {
         const player = this.getActivePlayer();
         if (this.selectedCardIndex === null) return { success: false, msg: "Önce bir kart seçin." };
         if (player.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
 
         const card = player.hand[this.selectedCardIndex];
-        const currentSlot = player.grid[slotIndex];
 
-        if (card.type === 'Diplomasi') {
-            player.dp += card.dp || 0;
-            player.grid[slotIndex] = { type: card.name, hp: card.hp, power: card.power };
-
-            if (card.name === 'Bilim Merkezi') {
-                player.grid[slotIndex].garrison = [{ name: 'Bilim İnsanı', type: 'Nüfus', power: 0 }];
-                player.grid[slotIndex].capacity = 5;
-                this.log(`🧪 Bilim Merkezi kuruldu! 1 Bilim İnsanı göreve başladı.`);
-            }
-
-            player.actionsRemaining -= 1;
-            player.hand.splice(this.selectedCardIndex, 1);
-            this.selectedCardIndex = null;
-            this.log(`${player.name}, ${card.name} inşa etti.`);
-            this.checkAutoEndTurn();
-            return { success: true };
+        // Diplomasi kartları buildOnSlot ile kullanılamaz — playDiplomacyCard üzerinden çalışır
+        if (card.type === 'Diplomasi' || card.type === 'Asker' || card.type === 'Teknoloji' || card.type === 'Paralı Asker') {
+            return { success: false, msg: `${card.type} kartları buradan kullanılmaz — kart panelinden tıkla.` };
         }
 
+        const currentSlot = player.grid[slotIndex];
         if (currentSlot && currentSlot.type !== 'Boş') {
             return { success: false, msg: "Alan dolu!" };
         }
 
-        if (card.type === 'Asker') {
-            const { capacity, totalPop } = this.getCapacityInfo(player);
-            if (totalPop + 1 > capacity) {
-                return { success: false, msg: `Nüfus limiti aşıldı! (Mevcut: ${totalPop}/${capacity})` };
-            }
+        const newBuilding = {
+            type: card.name,
+            hp: card.hp || 3,
+            power: card.power || 0
+        };
+
+        if (card.name === 'Bilim Merkezi') {
+            newBuilding.garrison = [{ name: 'Bilim İnsanı', type: 'Nüfus', power: 0 }];
+            newBuilding.capacity = 5;
+            this.log(`🧪 Bilim Merkezi kuruldu! 1 Bilim İnsanı göreve başladı.`);
+        } else if (card.name === 'Kışla') {
+            newBuilding.garrison = [];
         }
 
-        player.grid[slotIndex] = { type: card.name, hp: card.hp || 3, power: card.power || 0, isUnit: card.type === 'Asker' };
+        player.grid[slotIndex] = newBuilding;
         player.actionsRemaining -= 1;
         player.hand.splice(this.selectedCardIndex, 1);
         this.selectedCardIndex = null;
 
-        this.log(`${player.name}, ${card.name} inşa etti.`);
+        this.log(`🏗️ ${player.name}, ${card.name} inşa etti.`);
         this.checkAutoEndTurn();
         return { success: true };
     }

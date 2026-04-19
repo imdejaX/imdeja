@@ -65,6 +65,15 @@
                 <!-- SVG Harita -->
                 <svg id="game-map" xmlns="http://www.w3.org/2000/svg"></svg>
 
+                <!-- ── LOG PANELİ ── -->
+                <div id="log-panel">
+                    <div id="log-toggle">
+                        <span id="log-toggle-icon">▲</span> 📜 Olay Günlüğü
+                        <span id="log-turn-badge"></span>
+                    </div>
+                    <div id="log-content"></div>
+                </div>
+
                 <!-- Zar overlay -->
                 <div id="dice-overlay" class="dice-overlay">
                     <div class="dice-overlay-content">
@@ -91,15 +100,6 @@
 
         </div>
 
-        <!-- ── EL PANELİ (Alt) ─────────────────────────────────────────────── -->
-        <div id="hand-panel">
-            <div class="hand-panel-header">
-                <span class="hand-label">🃏 Elin</span>
-                <span id="hand-count" class="hand-count">0 kart</span>
-            </div>
-            <div id="hand-cards" class="hand-cards"></div>
-        </div>
-
         <!-- ── PAZAR MODAL ────────────────────────────────────────────────── -->
         <div id="market-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;">
             <div id="market-modal" class="market-modal-box">
@@ -123,16 +123,21 @@
                         <button id="close-market-btn" class="mkt-close-btn" title="Kapat (Esc)">✕</button>
                     </div>
                 </div>
-                <!-- Kartlar -->
+                <!-- Satılık Kartlar -->
                 <div id="market-cards" class="mkt-cards-area"></div>
+
+                <!-- Elimdeki Kartlar -->
+                <div class="mkt-hand-section">
+                    <div class="mkt-hand-header">
+                        <span class="mkt-hand-title">🃏 Elimdeki Kartlar</span>
+                        <span id="hand-count" class="mkt-hand-count">0 kart</span>
+                        <span class="mkt-hand-hint">Kullanmak için karta tıkla</span>
+                    </div>
+                    <div id="hand-cards" class="mkt-hand-row"></div>
+                </div>
             </div>
         </div>
 
-        <!-- ── LOG PANELİ ─────────────────────────────────────────────────── -->
-        <div id="log-panel" class="log-panel">
-            <div class="log-toggle" id="log-toggle">📜 Olay Günlüğü</div>
-            <div id="log-content" class="log-content" style="display:none"></div>
-        </div>
 
     </div><!-- #app -->
 
@@ -144,8 +149,10 @@
         }
         // Log paneli toggle
         document.getElementById('log-toggle').addEventListener('click', () => {
-            const c = document.getElementById('log-content');
-            c.style.display = c.style.display === 'none' ? 'block' : 'none';
+            const panel = document.getElementById('log-panel');
+            const icon = document.getElementById('log-toggle-icon');
+            const isOpen = panel.classList.toggle('log-open');
+            icon.textContent = isOpen ? '▼' : '▲';
         });
     </script>
 </body>

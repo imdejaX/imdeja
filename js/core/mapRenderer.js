@@ -325,11 +325,11 @@ export class MapRenderer {
         const buildings = owner.grid.filter(Boolean);
         if (buildings.length === 0) return;
 
-        // Maksimum 6 ikon göster, 3'er sütun
-        const icons = buildings.slice(0, 6).map(b => this._getBuildingIcon(b.type));
-        const cols = 3;
-        const iconSize = 14;
-        const gap = 18;
+        // Maksimum 12 ikon göster, 4'er sütun
+        const icons = buildings.slice(0, 12).map(b => this._getBuildingIcon(b.type));
+        const cols = 4;
+        const iconSize = 12;
+        const gap = 16;
         const startX = t.cx - ((Math.min(icons.length, cols) - 1) * gap) / 2;
         const startY = t.cy + 8;
 
@@ -349,15 +349,15 @@ export class MapRenderer {
             g.appendChild(txt);
         });
 
-        // Toplam bina sayısı (> 6 ise)
-        if (buildings.length > 6) {
+        // Toplam bina sayısı (> 12 ise)
+        if (buildings.length > 12) {
             const more = this._el('text');
             more.setAttribute('x', t.cx + 46);
             more.setAttribute('y', t.cy + 8);
             more.setAttribute('text-anchor', 'middle');
             more.setAttribute('fill', 'rgba(200,210,230,0.6)');
             more.setAttribute('font-size', '9');
-            more.textContent = `+${buildings.length - 6}`;
+            more.textContent = `+${buildings.length - 12}`;
             g.appendChild(more);
         }
     }
@@ -367,7 +367,7 @@ export class MapRenderer {
         const saray = owner.grid.find(b => b && b.type === 'Saray');
         if (!saray) return;
 
-        const maxHp = 5;
+        const maxHp = 10;
         const hp = saray.hp || 0;
         const pct = Math.max(0, Math.min(1, hp / maxHp));
         const barW = 80;
@@ -497,12 +497,29 @@ export class MapRenderer {
                 return;
             }
 
-            // Saldırıyı başlat
-            const result = game.initiateAttack(activePlayer.id, targetPlayer.id);
+            // Saldırıyı başlat — targetPlayer.id ve Saray slotu (0)
+            let result = game.initiateAttack(targetPlayer.id, 0);
+
+            // İttifak ihaneti onayı
+            if (result && result.requiresConfirmation) {
+                if (!confirm(result.msg)) {
+                    this.render();
+                    return;
+                }
+                result = game.initiateAttack(targetPlayer.id, 0, true);
+            }
+
             if (result && result.success === false) {
                 this._showMapToast(result.msg);
                 return;
             }
+
+            // Zar atma ekranını aç (window.renderer üzerinden)
+            if (result && result.waitingForDice) {
+                if (window.renderer) window.renderer.showDicePrompt();
+                return;
+            }
+
             game.clearActionMode();
             this.render();
             return;

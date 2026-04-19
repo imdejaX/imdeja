@@ -77,38 +77,64 @@ export const DiplomacyMixin = {
                     }
 
                     case 'steal_unit': {
-                        const units = target.grid
-                            .map((cell, idx) => ({ cell, idx }))
-                            .filter(item => item.cell && item.cell.isUnit);
-
-                        if (units.length > 0) {
-                            const randomUnit = units[Math.floor(Math.random() * units.length)];
-                            const emptySlots = player.grid
-                                .map((cell, idx) => ({ cell, idx }))
-                                .filter(item => !item.cell);
-
-                            if (emptySlots.length > 0) {
-                                const { capacity, totalPop } = this.getCapacityInfo(player);
-                                if (totalPop + 1 > capacity) {
-                                    this.log(`⚠️ PROPAGANDA BAŞARISIZ! ${player.name} nüfus limiti dolu!`);
-                                    break;
-                                }
-                                const targetSlot = emptySlots[0];
-                                const stolenUnitType = target.grid[randomUnit.idx].type;
-                                player.grid[targetSlot.idx] = target.grid[randomUnit.idx];
-                                target.grid[randomUnit.idx] = null;
-                                this.log(`🎭 PROPAGANDA BAŞARILI! ${player.name}, ${target.name}'den ${stolenUnitType} çaldı!`);
-                                this.showPropagandaNotification({
-                                    attacker: player.name, attackerColor: player.color,
-                                    defender: target.name, defenderColor: target.color,
-                                    unitName: stolenUnitType
-                                });
-                            } else {
-                                this.log(`⚠️ PROPAGANDA BAŞARISIZ! ${player.name}'in boş alanı yok!`);
+                        // Hedefin tüm garrison askerlerini topla
+                        const garrisonSources = [];
+                        target.grid.forEach(cell => {
+                            if (cell && cell.type === 'Kışla' && cell.garrison) {
+                                cell.garrison.forEach(soldier => garrisonSources.push({ cell, soldier }));
                             }
-                        } else {
-                            this.log(`⚠️ PROPAGANDA BAŞARISIZ! ${target.name}'in askeri birimi yok!`);
+                        });
+
+                        const totalTargetSoldiers = garrisonSources.length;
+                        if (totalTargetSoldiers === 0) {
+                            this.log(`⚠️ PROPAGANDA BAŞARISIZ! ${target.name}'in kışlasında asker yok!`);
+                            break;
                         }
+
+                        // %5 hesapla, en az 1
+                        const stealCount = Math.max(1, Math.floor(totalTargetSoldiers * 0.05));
+
+                        // Saldırganın alabileceği kadar kapasiteyi hesapla
+                        let availableCapacity = 0;
+                        player.grid.forEach(c => {
+                            if (c && c.type === 'Kışla') {
+                                availableCapacity += 15 - (c.garrison?.length || 0);
+                            }
+                        });
+
+                        if (availableCapacity === 0) {
+                            this.log(`⚠️ PROPAGANDA BAŞARISIZ! ${player.name}'in kışlasında yer yok!`);
+                            break;
+                        }
+
+                        const actualSteal = Math.min(stealCount, availableCapacity);
+
+                        // Rastgele karıştır ve çal
+                        const shuffled = [...garrisonSources].sort(() => Math.random() - 0.5);
+                        const toSteal = shuffled.slice(0, actualSteal);
+                        const stolenNames = {};
+
+                        toSteal.forEach(({ cell, soldier }) => {
+                            // Hedeften çıkar
+                            const si = cell.garrison.indexOf(soldier);
+                            if (si !== -1) cell.garrison.splice(si, 1);
+
+                            // Saldırgana ekle (ilk uygun kışlaya)
+                            const barracks = player.grid.find(c => c && c.type === 'Kışla' && (!c.garrison || c.garrison.length < 15));
+                            if (barracks) {
+                                if (!barracks.garrison) barracks.garrison = [];
+                                barracks.garrison.push(soldier);
+                                stolenNames[soldier.name] = (stolenNames[soldier.name] || 0) + 1;
+                            }
+                        });
+
+                        const summary = Object.entries(stolenNames).map(([n, c]) => `${c}× ${n}`).join(', ');
+                        this.log(`🎭 PROPAGANDA! ${player.name}, ${target.name}'den ${actualSteal} asker devşirdi (%5): ${summary}`);
+                        this.showPropagandaNotification({
+                            attacker: player.name, attackerColor: player.color,
+                            defender: target.name, defenderColor: target.color,
+                            unitName: `${actualSteal} asker (${summary})`
+                        });
                         break;
                     }
 
@@ -234,6 +260,17 @@ export const DiplomacyMixin = {
                         this.log(`⚠️ Bilinmeyen Diplomasi Kartı: ${card.effect}`);
                 }
             }
+        }
+
+        // Diplomasi sonuç popup'ı
+        if (this.onDiplomacyEffect) {
+            this.onDiplomacyEffect({
+                card,
+                playerName: player.name,
+                playerColor: player.color,
+                targetName: needsTarget ? this.players.find(p => p.id === targetPlayerId)?.name : null,
+                targetColor: needsTarget ? this.players.find(p => p.id === targetPlayerId)?.color : null,
+            });
         }
 
         this.checkAutoEndTurn();
