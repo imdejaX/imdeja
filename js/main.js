@@ -119,6 +119,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (marketBtn) marketBtn.addEventListener('click', openMarket);
 
+    // Pazar sekme butonları
+    const mktTabBar = document.getElementById('mkt-tab-bar');
+    if (mktTabBar) {
+        mktTabBar.addEventListener('click', (e) => {
+            const btn = e.target.closest('.mkt-tab-btn');
+            if (!btn) return;
+            renderer.renderMarket(btn.dataset.tab);
+        });
+    }
+
     const closeMarketBtn = document.getElementById('close-market-btn');
     if (closeMarketBtn) closeMarketBtn.addEventListener('click', closeMarket);
 

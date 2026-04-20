@@ -37,7 +37,8 @@ export const EconomyMixin = {
                 console.log('⌛ Auto-ending turn now...');
                 this.autoEndTimer = null;
                 this.endTurn();
-                window.renderer.render();
+                if (window.renderer) window.renderer.render();
+                if (window.mapRenderer) window.mapRenderer.render();
             }, 1500);
         }
     },

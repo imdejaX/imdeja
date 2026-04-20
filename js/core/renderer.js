@@ -437,7 +437,7 @@ export class Renderer {
             ? this.game.players.find(pl => pl.id === p.masterId)?.name
             : null;
 
-        // Saray (index 0) ayrı, diğer binalar ikon olarak
+        // Saray (index 0) ayrı
         const saray = p.grid[0];
         const sarayHp = saray ? saray.hp : 0;
         const sarayMaxHp = 10;
@@ -445,13 +445,9 @@ export class Renderer {
         const sarayHpColor = sarayHpPct > 0.6 ? '#22c55e' : sarayHpPct > 0.3 ? '#f59e0b' : '#ef4444';
         const sarayCivils = saray?.garrison?.length ?? 0;
 
-        // Diğer binalar (index 1+), grid index bilgisiyle
-        const otherBuildings = p.grid.slice(1).map((cell, i) => ({ cell, gridIdx: i + 1 })).filter(e => e.cell);
-        const emptySlots = p.grid.slice(1).filter(c => !c).length;
-        // Panel genişliğinde 2 satır sığar (4 chip/satır = 8 max görünür)
-        const MAX_CHIPS = 8;
-        const visibleBuildings = otherBuildings.slice(0, MAX_CHIPS);
-        const hiddenCount = otherBuildings.length - MAX_CHIPS;
+        // Bina kapasitesi özeti (1-12 slotlar)
+        const usedSlots = p.grid.slice(1).filter(Boolean).length;
+        const totalSlots = 12;
 
         // Kışla askerleri toplam
         let totalSoldiers = 0;
@@ -465,7 +461,7 @@ export class Renderer {
         div.innerHTML = `
             <div class="pc-header">
                 <div class="pc-color-dot"></div>
-                <div class="pc-name">${p.isBot ? '🤖 ' : ''}${p.name}${isActive ? ' 👑' : ''}${p.isVassal ? ' ⛓️' : ''}</div>
+                <div class="pc-name${isActive ? ' pc-name-clickable' : ''}" ${isActive ? 'title="El kartlarını göster"' : ''}>${p.isBot ? '🤖 ' : ''}${p.name}${isActive ? ' 👑' : ''}${p.isVassal ? ' ⛓️' : ''}</div>
                 <div class="pc-tech">⚔️${p.technologies.military} 🛡️${p.technologies.defense} 📈${p.technologies.commerce}</div>
             </div>
 
@@ -496,42 +492,43 @@ export class Renderer {
                 </div>
             </div>
 
-            <!-- Diğer binalar ikon satırı (max 2 satır = 8 chip) -->
-            <div class="pc-buildings-row">
-                ${visibleBuildings.map(({ cell, gridIdx }) => {
-                    const icon = this.getBuildingIcon(cell.type);
-                    const soldiers = cell.type === 'Kışla' && cell.garrison ? cell.garrison.length : null;
-                    const damaged = cell.hp < (cell.type === 'Kışla' ? 6 : 5);
-                    return `<div class="pc-bld-chip" data-grid-idx="${gridIdx}" title="${cell.type} ❤️${cell.hp}${soldiers !== null ? ' 👥' + soldiers : ''}">
-                        <span>${icon}</span>
-                        ${damaged ? `<span class="pc-bld-hp">❤️${cell.hp}</span>` : ''}
-                        ${soldiers !== null ? `<span class="pc-bld-soldiers">⚔️${soldiers}</span>` : ''}
-                    </div>`;
-                }).join('')}
-                ${hiddenCount > 0
-                    ? `<div class="pc-bld-more" title="${hiddenCount} bina daha">+${hiddenCount}</div>`
-                    : emptySlots > 0
-                        ? `<div class="pc-bld-empty" title="${emptySlots} boş slot">+${emptySlots} boş</div>`
-                        : ''}
+            <!-- Bina kapasitesi özeti -->
+            <div class="pc-bld-summary">
+                <span class="pc-bld-summary-icon">🏗️</span>
+                <span class="pc-bld-summary-count">${usedSlots}/${totalSlots}</span>
+                ${totalSoldiers > 0 ? `<span class="pc-bld-summary-soldiers">⚔️ ${totalSoldiers}</span>` : ''}
             </div>
 
             ${isActive ? `
                 <div class="action-mode-panel">
-                    <button class="action-mode-btn demolish ${this.game.actionMode === 'demolish' ? 'active' : ''}" data-mode="demolish">🔨 Yık</button>
-                    <button class="action-mode-btn attack ${this.game.actionMode === 'attack' ? 'active' : ''}" data-mode="attack">⚔️ Saldır</button>
+                    <button class="action-mode-btn demolish ${this.game.actionMode === 'demolish' ? 'active' : ''}" data-mode="demolish">
+                        <span class="amb-icon">🔨</span><span class="amb-label">Yık</span>
+                    </button>
+                    <button class="action-mode-btn attack ${this.game.actionMode === 'attack' ? 'active' : ''}" data-mode="attack">
+                        <span class="amb-icon">⚔️</span><span class="amb-label">Saldır</span>
+                    </button>
                 </div>
             ` : ''}
             ${isActive && p.allianceWith ? `
-                <button class="btn-diplo btn-break-alliance">💔 İttifak Boz</button>
+                <button class="btn-diplo btn-break-alliance"><span>💔</span> İttifak Boz</button>
             ` : ''}
             ${!isActive && !p.allianceWith && !p.isVassal && !this.game.getActivePlayer().isVassal && !this.game.getActivePlayer().allianceWith && this.game.players.length >= 3 ? `
-                <button class="btn-diplo btn-propose-alliance">🤝 İttifak Kur</button>
+                <button class="btn-diplo btn-propose-alliance"><span>🤝</span> İttifak Kur</button>
             ` : ''}
         `;
         return div;
     }
 
     _bindPlayerCardEvents(div, p, activePlayer) {
+        // Krallık ismine tıklayınca el kartı popup'ı aç (sadece aktif oyuncu)
+        const nameEl = div.querySelector('.pc-name-clickable');
+        if (nameEl) {
+            nameEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this._showHandPopup(p);
+            });
+        }
+
         div.querySelectorAll('.action-mode-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -610,64 +607,75 @@ export class Renderer {
         });
     }
 
-    renderMarket() {
-        this.containers.market.innerHTML = '';
-        this.containers.market.className = '';
+    renderMarket(activeTab) {
+        // Determine active tab (persist via dataset)
+        const area = this.containers.market;
+        const tabBar = document.getElementById('mkt-tab-bar');
+        if (!activeTab) {
+            activeTab = area.dataset.activeTab || 'standard';
+        }
+        area.dataset.activeTab = activeTab;
 
-        const standardGrid = document.createElement('div');
-        standardGrid.className = 'market-grid';
-        standardGrid.style.justifyContent = 'center';
+        // Update tab button active states
+        if (tabBar) {
+            tabBar.querySelectorAll('.mkt-tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === activeTab);
+            });
+        }
 
-        const mercenaryGrid = document.createElement('div');
-        mercenaryGrid.className = 'market-grid';
-        mercenaryGrid.style.justifyContent = 'center';
+        area.innerHTML = '';
 
-        const typeOrder = { 'Bina': 1, 'Asker': 2, 'Diplomasi': 3, 'Teknoloji': 4, 'Paralı Asker': 5 };
-        const combinedMarket = [...this.game.openMarket, ...this.game.mercenaryPool];
-        const sortedMarket = combinedMarket.sort((a, b) => {
-            const typeDiff = (typeOrder[a.type] || 99) - (typeOrder[b.type] || 99);
-            if (typeDiff !== 0) return typeDiff;
-            if (a.type === 'Teknoloji' && b.type === 'Teknoloji') return a.level - b.level;
-            return a.cost - b.cost;
-        });
+        const grid = document.createElement('div');
+        grid.className = 'market-grid';
+        grid.style.justifyContent = 'center';
 
-        sortedMarket.forEach((card) => {
+        const typeOrder = { 'Bina': 1, 'Asker': 2, 'Diplomasi': 3, 'Teknoloji': 4 };
+        const activePlayer = this.game.getActivePlayer();
+
+        const sourceList = activeTab === 'mercenary'
+            ? [...this.game.mercenaryPool]
+            : [...this.game.openMarket].sort((a, b) => {
+                const td = (typeOrder[a.type] || 99) - (typeOrder[b.type] || 99);
+                if (td !== 0) return td;
+                if (a.type === 'Teknoloji' && b.type === 'Teknoloji') return a.level - b.level;
+                return a.cost - b.cost;
+            });
+
+        sourceList.forEach((card) => {
             if (card.type === 'Teknoloji' && !card.isJoker) {
-                const activePlayer = this.game.getActivePlayer();
                 const currentLevel = activePlayer.technologies[card.techType];
                 if (card.level !== currentLevel + 1) return;
             }
 
-            let sourceIndex = this.game.openMarket.indexOf(card);
-            let isPool = false;
-            if (sourceIndex === -1) {
-                sourceIndex = this.game.mercenaryPool.indexOf(card);
-                if (sourceIndex !== -1) isPool = true;
-            }
+            const isPool = activeTab === 'mercenary';
+            const sourceIndex = isPool
+                ? this.game.mercenaryPool.indexOf(card)
+                : this.game.openMarket.indexOf(card);
 
-            const el = document.createElement('div');
-            const activePlayer = this.game.getActivePlayer();
             const canAfford = activePlayer.gold >= card.cost;
             const actionsRemaining = activePlayer.actionsRemaining;
 
-            el.className = `card market-card ${card.type === 'Diplomasi' ? 'diplomacy-card' : ''}
-                            ${card.type === 'Teknoloji' ? 'tech-card' : ''}
-                            ${card.effect === 'terror_joker' ? 'terror-joker' : ''}`;
+            const el = document.createElement('div');
 
             if (card.type === 'Paralı Asker') {
                 el.className = 'market-card mercenary-card';
-                el.style.border = '2px solid #a855f7';
-                el.style.background = 'linear-gradient(135deg, #3b0764 0%, #1e1b4b 100%)';
                 el.innerHTML = `
                     <div class="card-icon">⚔️💰</div>
                     <div class="card-name">${card.name}</div>
                     <div class="card-cost">${card.cost} Altın</div>
-                    <div class="card-desc" style="font-size: 0.7rem; color: #d8b4fe;">${card.description}</div>
+                    <div class="card-desc" style="font-size:0.7rem;color:#d8b4fe;">${card.description || ''}</div>
                     ${actionsRemaining > 0 ? (canAfford ? '<div class="buy-hint">🛒</div>' : '<div class="buy-hint" style="color:red">❌</div>') : '<div class="buy-hint" style="color:gray">🔒</div>'}
                 `;
             } else {
+                el.className = [
+                    'card market-card',
+                    card.type === 'Diplomasi' ? 'diplomacy-card' : '',
+                    card.type === 'Teknoloji' ? 'tech-card' : '',
+                    card.effect === 'terror_joker' ? 'terror-joker' : '',
+                ].filter(Boolean).join(' ');
+
                 const isPropaganda = card.name === 'Propaganda';
-                const propStyle = isPropaganda ? 'font-size: 0.72rem !important; letter-spacing: -0.5px; word-break: break-all; line-height: 1.1; margin-top: 12px;' : '';
+                const propStyle = isPropaganda ? 'font-size:0.72rem;letter-spacing:-0.5px;word-break:break-all;line-height:1.1;margin-top:12px;' : '';
                 el.innerHTML = `
                     <div class="card-name ${isPropaganda ? 'propaganda-text' : ''}" style="${propStyle}">${card.name}</div>
                     <div class="card-cost">${card.cost} Altın</div>
@@ -682,22 +690,10 @@ export class Renderer {
                 this.render();
             });
 
-            if (card.type === 'Paralı Asker' || card.isPoolSoldier) {
-                mercenaryGrid.appendChild(el);
-            } else {
-                standardGrid.appendChild(el);
-            }
+            grid.appendChild(el);
         });
 
-        this.containers.market.appendChild(standardGrid);
-
-        if (mercenaryGrid.children.length > 0) {
-            const separator = document.createElement('div');
-            separator.style.cssText = 'width: 100%; text-align: center; margin: 20px 0 10px; border-top: 1px solid rgba(251, 191, 36, 0.3); padding-top: 15px;';
-            separator.innerHTML = '<h4 style="color: #fbbf24; font-family: Cinzel, serif; margin: 0; text-shadow: 0 0 5px rgba(251, 191, 36, 0.3);">⚔️ Paralı Askerler</h4>';
-            this.containers.market.appendChild(separator);
-            this.containers.market.appendChild(mercenaryGrid);
-        }
+        area.appendChild(grid);
     }
 
     renderHand() {
@@ -832,6 +828,115 @@ export class Renderer {
 
             handContainer.appendChild(el);
         });
+    }
+
+    _showHandPopup(p) {
+        // Mevcut popup varsa kapat
+        let existing = document.getElementById('hand-popup');
+        if (existing) { existing.remove(); return; }
+
+        const popup = document.createElement('div');
+        popup.id = 'hand-popup';
+        popup.className = 'hand-popup';
+
+        const CARD_META = {
+            'Bina':        { icon: '🏗️', color: '#60a5fa' },
+            'Asker':       { icon: '⚔️', color: '#f87171' },
+            'Diplomasi':   { icon: '🎭', color: '#a78bfa' },
+            'Teknoloji':   { icon: '🔬', color: '#34d399' },
+            'Paralı Asker':{ icon: '💰', color: '#c084fc' },
+        };
+
+        const header = document.createElement('div');
+        header.className = 'hp-header';
+        header.innerHTML = `<span>🃏 El Kartları <span class="hp-count">${p.hand.length}</span></span><button class="hp-close">✕</button>`;
+        header.querySelector('.hp-close').addEventListener('click', () => popup.remove());
+        popup.appendChild(header);
+
+        if (p.hand.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'hp-empty';
+            empty.textContent = 'Elinde kart yok';
+            popup.appendChild(empty);
+        } else {
+            const list = document.createElement('div');
+            list.className = 'hp-list';
+
+            p.hand.forEach((card, idx) => {
+                const meta = CARD_META[card.type] || { icon: '🃏', color: '#94a3b8' };
+                const el = document.createElement('div');
+                el.className = 'hp-card';
+                el.style.setProperty('--card-color', meta.color);
+                el.innerHTML = `
+                    <div class="hp-card-top">
+                        <span class="hp-card-icon">${meta.icon}</span>
+                        <span class="hp-card-name">${card.name}${card.level ? ` Lv${card.level}` : ''}${card.dp ? ` (+${card.dp}DP)` : ''}</span>
+                        <span class="hp-card-cost">${card.cost}💰</span>
+                    </div>
+                    <div class="hp-card-type">${card.type}</div>
+                `;
+                el.addEventListener('click', () => {
+                    popup.remove();
+                    this._useCardFromPopup(idx, card);
+                });
+                list.appendChild(el);
+            });
+
+            popup.appendChild(list);
+        }
+
+        document.body.appendChild(popup);
+
+        // Dışarı tıklayınca kapat
+        setTimeout(() => {
+            document.addEventListener('click', function closePopup(e) {
+                if (!popup.contains(e.target)) {
+                    popup.remove();
+                    document.removeEventListener('click', closePopup);
+                }
+            });
+        }, 50);
+    }
+
+    _useCardFromPopup(handIndex, card) {
+        const game = this.game;
+
+        if (card.type === 'Bina') {
+            const result = game.buildBuilding(handIndex);
+            if (result.success === false) alert(result.msg);
+            else this.render();
+        } else if (card.type === 'Asker') {
+            const result = game.playAskerCard(handIndex);
+            if (result.success === false) alert(result.msg);
+            else this.render();
+        } else if (card.type === 'Paralı Asker') {
+            const result = game.playMercenaryCard(handIndex);
+            if (result.success === false) alert(result.msg);
+            else this.render();
+        } else if (card.type === 'Teknoloji') {
+            const result = game.playTechnologyCard(handIndex);
+            if (result.success === false) {
+                if (result.msg === 'JOKER_SELECTION_NEEDED') this.showJokerModal(result.cardIndex, result.availableTechs);
+                else alert(result.msg);
+            } else this.render();
+        } else if (card.type === 'Diplomasi') {
+            const needsTarget = card.effect && card.effect !== 'gold_boost' &&
+                card.effect !== 'military_boost' && card.effect !== 'white_flag';
+            if (!needsTarget) {
+                const result = game.playDiplomacyCard(handIndex, null);
+                if (result.success === false) alert(result.msg);
+                else this.render();
+            } else if (game.players.length === 2) {
+                const opponent = game.players.find(pl => pl.id !== game.getActivePlayer().id);
+                const result = game.playDiplomacyCard(handIndex, opponent.id);
+                if (result.success === false) alert(result.msg);
+                else this.render();
+            } else {
+                game.pendingDiplomacyCard = { cardIndex: handIndex, card };
+                if (game.onDiplomacyTargetNeeded) game.onDiplomacyTargetNeeded(card.name);
+                this.render();
+            }
+        }
     }
 }
 

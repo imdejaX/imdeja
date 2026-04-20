@@ -9,64 +9,64 @@ export class MapRenderer {
         this.svg = svgElement;
         this.selectedTerritory = null;
 
-        // 8 bölge: merkezi bir harita üzerinde eşit dağılım
+        // 8 bölge — antika harita stili, organik şekiller
         // viewBox: 0 0 1000 700
         this.territories = [
             {
                 id: 0,
                 name: 'Kuzey Krallığı',
-                cx: 220, cy: 140,
-                path: 'M 80,40 L 370,40 L 380,180 L 310,220 L 180,240 L 90,200 Z',
-                labelOffset: { x: 0, y: -10 }
+                cx: 205, cy: 128,
+                path: 'M 52,30 L 148,22 L 248,18 L 338,26 L 382,50 L 392,88 L 378,132 L 348,168 L 295,194 L 238,205 L 178,202 L 122,184 L 75,155 L 46,116 L 40,72 Z',
+                labelOffset: { x: 0, y: -8 }
             },
             {
                 id: 1,
                 name: 'Doğu İmparatorluğu',
-                cx: 780, cy: 140,
-                path: 'M 630,40 L 920,40 L 910,200 L 820,240 L 690,220 L 620,180 Z',
-                labelOffset: { x: 0, y: -10 }
+                cx: 788, cy: 128,
+                path: 'M 618,26 L 718,18 L 818,18 L 905,28 L 948,55 L 958,96 L 946,140 L 914,174 L 862,200 L 800,208 L 736,205 L 678,188 L 642,154 L 624,112 L 618,68 Z',
+                labelOffset: { x: 0, y: -8 }
             },
             {
                 id: 2,
                 name: 'Batı Konfederasyonu',
-                cx: 140, cy: 350,
-                path: 'M 30,260 L 190,240 L 230,280 L 250,420 L 210,470 L 60,440 L 20,380 Z',
-                labelOffset: { x: 0, y: -10 }
+                cx: 130, cy: 360,
+                path: 'M 30,225 L 95,216 L 162,218 L 212,238 L 238,275 L 245,322 L 238,372 L 220,420 L 196,458 L 158,478 L 110,482 L 62,468 L 26,440 L 14,395 L 16,346 L 20,292 Z',
+                labelOffset: { x: 0, y: -8 }
             },
             {
                 id: 3,
                 name: 'Merkez Cumhuriyeti',
-                cx: 500, cy: 300,
-                path: 'M 310,220 L 460,200 L 540,200 L 690,220 L 700,360 L 610,420 L 500,440 L 390,420 L 300,360 Z',
-                labelOffset: { x: 0, y: -10 }
+                cx: 500, cy: 322,
+                path: 'M 305,218 L 392,205 L 462,198 L 538,198 L 608,205 L 690,218 L 728,250 L 738,292 L 732,342 L 715,385 L 688,418 L 644,442 L 582,456 L 500,460 L 418,456 L 356,442 L 312,418 L 284,385 L 265,342 L 260,292 L 270,250 Z',
+                labelOffset: { x: 0, y: -8 }
             },
             {
                 id: 4,
                 name: 'Güney Sultanlığı',
-                cx: 500, cy: 590,
-                path: 'M 320,480 L 500,460 L 680,480 L 690,580 L 590,660 L 500,680 L 410,660 L 310,580 Z',
-                labelOffset: { x: 0, y: 20 }
+                cx: 500, cy: 572,
+                path: 'M 305,475 L 392,465 L 465,460 L 535,460 L 608,465 L 692,475 L 728,506 L 740,548 L 730,592 L 706,628 L 660,652 L 612,666 L 558,672 L 500,674 L 442,672 L 388,666 L 340,652 L 295,628 L 272,592 L 262,548 L 272,506 Z',
+                labelOffset: { x: 0, y: 18 }
             },
             {
                 id: 5,
                 name: 'Doğu Sultanlığı',
-                cx: 860, cy: 350,
-                path: 'M 810,240 L 970,260 L 980,440 L 940,470 L 790,420 L 750,280 Z',
-                labelOffset: { x: 10, y: -10 }
+                cx: 862, cy: 352,
+                path: 'M 752,218 L 835,210 L 910,222 L 956,260 L 974,308 L 975,360 L 960,410 L 934,450 L 895,472 L 844,480 L 794,466 L 756,436 L 738,395 L 735,345 L 740,295 Z',
+                labelOffset: { x: 8, y: -8 }
             },
             {
                 id: 6,
                 name: 'Güneybatı Hanedanı',
-                cx: 140, cy: 560,
-                path: 'M 30,460 L 200,460 L 240,480 L 250,600 L 160,660 L 40,640 L 20,540 Z',
-                labelOffset: { x: 0, y: 20 }
+                cx: 130, cy: 570,
+                path: 'M 26,490 L 96,482 L 162,486 L 218,508 L 242,548 L 240,592 L 218,630 L 178,655 L 128,664 L 75,652 L 32,624 L 14,588 L 16,544 Z',
+                labelOffset: { x: 0, y: 18 }
             },
             {
                 id: 7,
                 name: 'Güneydoğu Hanedanı',
-                cx: 860, cy: 560,
-                path: 'M 800,460 L 960,480 L 980,640 L 860,660 L 750,600 L 760,480 Z',
-                labelOffset: { x: 0, y: 20 }
+                cx: 858, cy: 568,
+                path: 'M 748,482 L 828,474 L 896,482 L 944,510 L 962,552 L 958,596 L 930,634 L 882,658 L 828,668 L 772,656 L 730,628 L 714,590 L 716,548 L 730,512 Z',
+                labelOffset: { x: 0, y: 18 }
             }
         ];
 
@@ -93,35 +93,45 @@ export class MapRenderer {
         this.svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
         this.svg.innerHTML = '';
 
-        // Arka plan gradient tanımı
         const defs = this._el('defs');
         defs.innerHTML = `
-            <radialGradient id="map-bg" cx="50%" cy="50%" r="70%">
-                <stop offset="0%" stop-color="#1a2535"/>
-                <stop offset="100%" stop-color="#0a0f1a"/>
+            <linearGradient id="parchment-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%"   stop-color="#eddcb0"/>
+                <stop offset="45%"  stop-color="#e2ce9a"/>
+                <stop offset="100%" stop-color="#c9a86c"/>
+            </linearGradient>
+            <radialGradient id="sea-bg" cx="50%" cy="50%" r="70%">
+                <stop offset="0%"   stop-color="#7aafc2"/>
+                <stop offset="100%" stop-color="#5a8fa5"/>
             </radialGradient>
-            <filter id="territory-glow">
-                <feGaussianBlur stdDeviation="3" result="blur"/>
-                <feComposite in="SourceGraphic" in2="blur" operator="over"/>
-            </filter>
+            <radialGradient id="vignette" cx="50%" cy="50%" r="72%">
+                <stop offset="55%" stop-color="rgba(0,0,0,0)"/>
+                <stop offset="100%" stop-color="rgba(60,30,5,0.45)"/>
+            </radialGradient>
+            <pattern id="sea-lines" x="0" y="0" width="50" height="50"
+                     patternUnits="userSpaceOnUse" patternTransform="rotate(25)">
+                <line x1="0" y1="0" x2="50" y2="0" stroke="rgba(255,255,255,0.14)" stroke-width="0.6"/>
+            </pattern>
             <filter id="label-shadow">
-                <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.8)"/>
+                <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="rgba(255,230,160,0.6)"/>
+            </filter>
+            <filter id="territory-glow">
+                <feGaussianBlur stdDeviation="4" result="blur"/>
+                <feComposite in="SourceGraphic" in2="blur" operator="over"/>
             </filter>
         `;
         this.svg.appendChild(defs);
 
-        // Harita arka planı
-        const bg = this._el('rect');
-        bg.setAttribute('width', '1000');
-        bg.setAttribute('height', '700');
-        bg.setAttribute('fill', 'url(#map-bg)');
-        bg.setAttribute('rx', '12');
-        this.svg.appendChild(bg);
+        // Deniz arka planı
+        const seaBg = this._el('rect');
+        seaBg.setAttribute('width', '1000'); seaBg.setAttribute('height', '700');
+        seaBg.setAttribute('fill', 'url(#sea-bg)');
+        this.svg.appendChild(seaBg);
 
-        // Dekoratif ızgara
+        // Deniz çizgi deseni (rhumb lines)
         this._buildGrid();
 
-        // Bölge bağlantı çizgileri (komşuluk)
+        // Bölge bağlantı çizgileri
         this.connectionLayer = this._el('g');
         this.connectionLayer.id = 'connection-layer';
         this.svg.appendChild(this.connectionLayer);
@@ -132,17 +142,30 @@ export class MapRenderer {
         this.territoryLayer.id = 'territory-layer';
         this.svg.appendChild(this.territoryLayer);
 
-        // Animasyon katmanı (projes ve patlamalar)
+        // Animasyon katmanı
         this.animLayer = this._el('g');
         this.animLayer.id = 'anim-layer';
         this.svg.appendChild(this.animLayer);
 
-        // UI overlay (HP barları, ikonlar)
+        // UI katmanı
         this.uiLayer = this._el('g');
         this.uiLayer.id = 'ui-layer';
         this.svg.appendChild(this.uiLayer);
 
-        // Her bölge için grup oluştur
+        // Vignette overlay (üste çizilir, pointer-events yok)
+        const vig = this._el('rect');
+        vig.setAttribute('width', '1000'); vig.setAttribute('height', '700');
+        vig.setAttribute('fill', 'url(#vignette)');
+        vig.setAttribute('pointer-events', 'none');
+        this.svg.appendChild(vig);
+
+        // Çerçeve
+        this._buildBorderFrame();
+
+        // Pusula
+        this._buildCompassRose();
+
+        // Bölge grupları
         this.territoryGroups = {};
         this.territories.forEach(t => {
             const g = this._el('g');
@@ -155,23 +178,13 @@ export class MapRenderer {
     }
 
     _buildGrid() {
-        const grid = this._el('g');
-        grid.setAttribute('opacity', '0.04');
-        grid.setAttribute('stroke', '#60a5fa');
-        grid.setAttribute('stroke-width', '0.5');
-        for (let x = 0; x <= 1000; x += 50) {
-            const l = this._el('line');
-            l.setAttribute('x1', x); l.setAttribute('y1', 0);
-            l.setAttribute('x2', x); l.setAttribute('y2', 700);
-            grid.appendChild(l);
-        }
-        for (let y = 0; y <= 700; y += 50) {
-            const l = this._el('line');
-            l.setAttribute('x1', 0); l.setAttribute('y1', y);
-            l.setAttribute('x2', 1000); l.setAttribute('y2', y);
-            grid.appendChild(l);
-        }
-        this.svg.appendChild(grid);
+        const g = this._el('g');
+        g.setAttribute('pointer-events', 'none');
+        const r = this._el('rect');
+        r.setAttribute('width', '1000'); r.setAttribute('height', '700');
+        r.setAttribute('fill', 'url(#sea-lines)');
+        g.appendChild(r);
+        this.svg.appendChild(g);
     }
 
     _buildConnections() {
@@ -183,16 +196,78 @@ export class MapRenderer {
                 drawn.add(key);
                 const neighbor = this.territories[neighborId];
                 const line = this._el('line');
-                line.setAttribute('x1', t.cx);
-                line.setAttribute('y1', t.cy);
-                line.setAttribute('x2', neighbor.cx);
-                line.setAttribute('y2', neighbor.cy);
-                line.setAttribute('stroke', 'rgba(148,163,184,0.15)');
-                line.setAttribute('stroke-width', '1.5');
-                line.setAttribute('stroke-dasharray', '6 4');
+                line.setAttribute('x1', t.cx); line.setAttribute('y1', t.cy);
+                line.setAttribute('x2', neighbor.cx); line.setAttribute('y2', neighbor.cy);
+                line.setAttribute('stroke', 'rgba(92,48,18,0.22)');
+                line.setAttribute('stroke-width', '1');
+                line.setAttribute('stroke-dasharray', '5 7');
                 this.connectionLayer.appendChild(line);
             });
         });
+    }
+
+    _buildBorderFrame() {
+        // Dış çerçeve
+        const outer = this._el('rect');
+        outer.setAttribute('x', '7'); outer.setAttribute('y', '7');
+        outer.setAttribute('width', '986'); outer.setAttribute('height', '686');
+        outer.setAttribute('fill', 'none');
+        outer.setAttribute('stroke', '#4a2c0a');
+        outer.setAttribute('stroke-width', '3');
+        outer.setAttribute('pointer-events', 'none');
+        this.svg.appendChild(outer);
+        // İç çerçeve
+        const inner = this._el('rect');
+        inner.setAttribute('x', '14'); inner.setAttribute('y', '14');
+        inner.setAttribute('width', '972'); inner.setAttribute('height', '672');
+        inner.setAttribute('fill', 'none');
+        inner.setAttribute('stroke', '#4a2c0a');
+        inner.setAttribute('stroke-width', '1');
+        inner.setAttribute('opacity', '0.5');
+        inner.setAttribute('pointer-events', 'none');
+        this.svg.appendChild(inner);
+        // Köşe süsleri
+        [[7,7],[993,7],[7,693],[993,693]].forEach(([x,y]) => {
+            const sq = this._el('rect');
+            sq.setAttribute('x', x-4); sq.setAttribute('y', y-4);
+            sq.setAttribute('width', '8'); sq.setAttribute('height', '8');
+            sq.setAttribute('fill', '#4a2c0a');
+            sq.setAttribute('pointer-events', 'none');
+            this.svg.appendChild(sq);
+        });
+    }
+
+    _buildCompassRose() {
+        const g = this._el('g');
+        g.setAttribute('transform', 'translate(72, 625)');
+        g.setAttribute('pointer-events', 'none');
+        g.setAttribute('opacity', '0.65');
+
+        // 8 kollu yıldız
+        const star = this._el('polygon');
+        star.setAttribute('points', '0,-26 4,-4 26,0 4,4 0,26 -4,4 -26,0 -4,-4');
+        star.setAttribute('fill', '#4a2c0a');
+        g.appendChild(star);
+
+        const inner = this._el('polygon');
+        inner.setAttribute('points', '0,-14 2.5,-2.5 14,0 2.5,2.5 0,14 -2.5,2.5 -14,0 -2.5,-2.5');
+        inner.setAttribute('fill', '#c9a86c');
+        g.appendChild(inner);
+
+        const circle = this._el('circle');
+        circle.setAttribute('r', '4'); circle.setAttribute('cx', '0'); circle.setAttribute('cy', '0');
+        circle.setAttribute('fill', '#4a2c0a');
+        g.appendChild(circle);
+
+        // N etiketi
+        const n = this._el('text');
+        n.setAttribute('x', '0'); n.setAttribute('y', '-31');
+        n.setAttribute('text-anchor', 'middle'); n.setAttribute('font-size', '9');
+        n.setAttribute('font-family', 'Cinzel, serif'); n.setAttribute('fill', '#2c1600');
+        n.setAttribute('font-weight', '700'); n.textContent = 'N';
+        g.appendChild(n);
+
+        this.svg.appendChild(g);
     }
 
     // ─── Ana Render ───────────────────────────────────────────────────────────
@@ -200,6 +275,12 @@ export class MapRenderer {
     render() {
         const game = this.game;
         const players = game.players;
+
+        // Saldırı / demolish modundaysa hand panelini kapat
+        if (game.actionMode && game.actionMode !== 'build') {
+            this._toggleHandPanel(false);
+            this.selectedTerritory = null;
+        }
 
         // Her oyuncunun hangi bölgeye sahip olduğunu hesapla
         // players[i].territoryId = i (0-7, oyuncu sayısına göre)
@@ -235,103 +316,126 @@ export class MapRenderer {
     _renderEmptyTerritory(g, t) {
         const shape = this._el('path');
         shape.setAttribute('d', t.path);
-        shape.setAttribute('fill', 'rgba(30,40,60,0.4)');
-        shape.setAttribute('stroke', 'rgba(100,120,160,0.2)');
-        shape.setAttribute('stroke-width', '1.5');
-        shape.setAttribute('rx', '4');
+        shape.setAttribute('fill', '#c4a870');
+        shape.setAttribute('stroke', '#7a5028');
+        shape.setAttribute('stroke-width', '1.4');
+        shape.setAttribute('opacity', '0.45');
         g.appendChild(shape);
 
         const label = this._el('text');
-        label.setAttribute('x', t.cx);
-        label.setAttribute('y', t.cy);
+        label.setAttribute('x', t.cx); label.setAttribute('y', t.cy);
         label.setAttribute('text-anchor', 'middle');
         label.setAttribute('dominant-baseline', 'middle');
-        label.setAttribute('fill', 'rgba(100,120,160,0.4)');
-        label.setAttribute('font-size', '11');
+        label.setAttribute('fill', '#5c3820');
+        label.setAttribute('font-size', '9');
         label.setAttribute('font-family', 'Cinzel, serif');
+        label.setAttribute('font-style', 'italic');
+        label.setAttribute('opacity', '0.55');
         label.textContent = t.name;
         g.appendChild(label);
     }
 
     _renderTerritoryShape(g, t, color, isSelected, isActionTarget, isElim) {
-        // Glow halka (seçili veya hedef ise)
+        // Seçili / hedef halka
         if (isSelected || isActionTarget) {
             const glow = this._el('path');
             glow.setAttribute('d', t.path);
             glow.setAttribute('fill', 'none');
-            glow.setAttribute('stroke', isActionTarget ? '#ef4444' : '#facc15');
-            glow.setAttribute('stroke-width', '4');
-            glow.setAttribute('opacity', '0.7');
+            glow.setAttribute('stroke', isActionTarget ? '#8b1a1a' : '#5c3012');
+            glow.setAttribute('stroke-width', '5');
+            glow.setAttribute('opacity', '0.65');
             glow.classList.add('territory-shape');
             if (isActionTarget) glow.classList.add('attack-target-pulse');
             g.appendChild(glow);
         }
 
-        // Ana alan
+        // Parşömen zemin dolgusu
+        const base = this._el('path');
+        base.setAttribute('d', t.path);
+        base.setAttribute('fill', '#dcc898');
+        base.setAttribute('stroke', 'none');
+        g.appendChild(base);
+
+        // Oyuncu renk tonu (hafif overlay)
+        if (color && !isElim) {
+            const tint = this._el('path');
+            tint.setAttribute('d', t.path);
+            tint.setAttribute('fill', color);
+            tint.setAttribute('opacity', '0.20');
+            tint.setAttribute('pointer-events', 'none');
+            g.appendChild(tint);
+        }
+
+        // Ana şekil (şeffaf, sadece event yakalamak için)
         const shape = this._el('path');
         shape.setAttribute('d', t.path);
         shape.classList.add('territory-shape');
         if (isActionTarget) shape.classList.add('attack-target');
         if (isSelected) shape.classList.add('selected');
-
-        const alpha = isElim ? '0.15' : '0.25';
-        shape.setAttribute('fill', this._hexToRgba(color, parseFloat(alpha)));
-        shape.setAttribute('stroke', color);
-        shape.setAttribute('stroke-width', isSelected ? '3' : '2');
-        shape.setAttribute('filter', 'url(#territory-glow)');
+        shape.setAttribute('fill', 'transparent');
+        shape.setAttribute('stroke', isElim ? '#8b7355' : '#3d1c02');
+        shape.setAttribute('stroke-width', isSelected ? '2.8' : '1.8');
         g.appendChild(shape);
-
-        // İç doku overlay
-        const overlay = this._el('path');
-        overlay.setAttribute('d', t.path);
-        overlay.setAttribute('fill', `url(#map-bg)`);
-        overlay.setAttribute('opacity', '0.1');
-        overlay.setAttribute('pointer-events', 'none');
-        g.appendChild(overlay);
     }
 
     _renderTerritoryLabel(g, t, owner, color) {
-        const labelY = t.cy + t.labelOffset.y - 18;
+        const lx = t.cx + t.labelOffset.x;
+        const ly = t.cy + t.labelOffset.y - 14;
 
-        // Oyuncu adı
+        // Bölge adı — küçük, italic, koyu sepya
+        const regionName = this._el('text');
+        regionName.setAttribute('x', lx); regionName.setAttribute('y', ly - 12);
+        regionName.setAttribute('text-anchor', 'middle');
+        regionName.setAttribute('dominant-baseline', 'middle');
+        regionName.setAttribute('fill', '#5c3820');
+        regionName.setAttribute('font-size', '7.5');
+        regionName.setAttribute('font-family', 'Cinzel, serif');
+        regionName.setAttribute('font-style', 'italic');
+        regionName.setAttribute('opacity', '0.65');
+        regionName.textContent = t.name.toUpperCase();
+        g.appendChild(regionName);
+
+        // Oyuncu adı — kalın, Cinzel, oyuncu rengi (koyu ton)
         const name = this._el('text');
-        name.setAttribute('x', t.cx + t.labelOffset.x);
-        name.setAttribute('y', labelY);
+        name.setAttribute('x', lx); name.setAttribute('y', ly);
         name.setAttribute('text-anchor', 'middle');
         name.setAttribute('dominant-baseline', 'middle');
-        name.setAttribute('fill', color);
-        name.setAttribute('font-size', '11');
+        name.setAttribute('fill', owner.eliminated ? '#8b7355' : color);
+        name.setAttribute('font-size', '10.5');
         name.setAttribute('font-weight', '700');
         name.setAttribute('font-family', 'Cinzel, serif');
         name.setAttribute('filter', 'url(#label-shadow)');
         name.textContent = owner.eliminated ? `✝ ${owner.name}` : owner.name;
         g.appendChild(name);
-
-        // Bölge adı (daha küçük)
-        const regionName = this._el('text');
-        regionName.setAttribute('x', t.cx + t.labelOffset.x);
-        regionName.setAttribute('y', labelY - 14);
-        regionName.setAttribute('text-anchor', 'middle');
-        regionName.setAttribute('dominant-baseline', 'middle');
-        regionName.setAttribute('fill', 'rgba(200,210,230,0.5)');
-        regionName.setAttribute('font-size', '8');
-        regionName.setAttribute('font-family', 'sans-serif');
-        regionName.textContent = t.name.toUpperCase();
-        g.appendChild(regionName);
     }
 
     _renderBuildings(g, t, owner) {
         if (!owner.grid) return;
-        const buildings = owner.grid.filter(Boolean);
-        if (buildings.length === 0) return;
 
-        // Maksimum 12 ikon göster, 4'er sütun
-        const icons = buildings.slice(0, 12).map(b => this._getBuildingIcon(b.type));
+        // Saray (index 0) — büyük, ayrı satır
+        const saray = owner.grid[0];
+        if (saray) {
+            const palaceY = t.cy + 4;
+            const palaceTxt = this._el('text');
+            palaceTxt.setAttribute('x', t.cx);
+            palaceTxt.setAttribute('y', palaceY);
+            palaceTxt.setAttribute('text-anchor', 'middle');
+            palaceTxt.setAttribute('dominant-baseline', 'middle');
+            palaceTxt.setAttribute('font-size', '26');
+            palaceTxt.textContent = '🏰';
+            g.appendChild(palaceTxt);
+        }
+
+        // Diğer binalar (index 1+) — küçük, alt satır
+        const others = owner.grid.slice(1).filter(Boolean);
+        if (others.length === 0) return;
+
+        const icons = others.slice(0, 12).map(b => this._getBuildingIcon(b.type));
         const cols = 4;
-        const iconSize = 12;
-        const gap = 16;
+        const iconSize = 11;
+        const gap = 15;
         const startX = t.cx - ((Math.min(icons.length, cols) - 1) * gap) / 2;
-        const startY = t.cy + 8;
+        const startY = t.cy + 20;  // below palace icon
 
         icons.forEach((icon, i) => {
             const row = Math.floor(i / cols);
@@ -349,15 +453,14 @@ export class MapRenderer {
             g.appendChild(txt);
         });
 
-        // Toplam bina sayısı (> 12 ise)
-        if (buildings.length > 12) {
+        if (others.length > 12) {
             const more = this._el('text');
-            more.setAttribute('x', t.cx + 46);
-            more.setAttribute('y', t.cy + 8);
+            more.setAttribute('x', t.cx + 48);
+            more.setAttribute('y', t.cy + 20);
             more.setAttribute('text-anchor', 'middle');
             more.setAttribute('fill', 'rgba(200,210,230,0.6)');
             more.setAttribute('font-size', '9');
-            more.textContent = `+${buildings.length - 12}`;
+            more.textContent = `+${others.length - 12}`;
             g.appendChild(more);
         }
     }
@@ -370,47 +473,44 @@ export class MapRenderer {
         const maxHp = 10;
         const hp = saray.hp || 0;
         const pct = Math.max(0, Math.min(1, hp / maxHp));
-        const barW = 80;
-        const barH = 6;
+        const barW = 72;
+        const barH = 5;
+        const others = owner.grid.slice(1).filter(Boolean).length;
+        const rows = Math.ceil(others / 4);
         const bx = t.cx - barW / 2;
-        const by = t.cy + (owner.grid.filter(Boolean).length > 0 ? 44 : 20);
+        const by = t.cy + 20 + (rows > 0 ? rows * 14 : 0);
 
-        // Arka plan
+        // Çerçeve (antika stil)
         const bgRect = this._el('rect');
-        bgRect.setAttribute('x', bx);
-        bgRect.setAttribute('y', by);
-        bgRect.setAttribute('width', barW);
-        bgRect.setAttribute('height', barH);
-        bgRect.setAttribute('fill', 'rgba(0,0,0,0.5)');
-        bgRect.setAttribute('rx', '3');
+        bgRect.setAttribute('x', bx - 1); bgRect.setAttribute('y', by - 1);
+        bgRect.setAttribute('width', barW + 2); bgRect.setAttribute('height', barH + 2);
+        bgRect.setAttribute('fill', 'rgba(60,30,5,0.35)');
+        bgRect.setAttribute('rx', '2');
         g.appendChild(bgRect);
 
         // HP dolgu
-        const hpColor = pct > 0.6 ? '#22c55e' : pct > 0.3 ? '#f59e0b' : '#ef4444';
+        const hpColor = pct > 0.6 ? '#4a7c3f' : pct > 0.3 ? '#8b6e14' : '#8b1a1a';
         const fillRect = this._el('rect');
-        fillRect.setAttribute('x', bx);
-        fillRect.setAttribute('y', by);
-        fillRect.setAttribute('width', barW * pct);
+        fillRect.setAttribute('x', bx); fillRect.setAttribute('y', by);
+        fillRect.setAttribute('width', Math.max(0, barW * pct));
         fillRect.setAttribute('height', barH);
         fillRect.setAttribute('fill', hpColor);
-        fillRect.setAttribute('rx', '3');
+        fillRect.setAttribute('rx', '2');
         fillRect.classList.add('territory-hp-bar-fill');
         g.appendChild(fillRect);
 
-        // HP metni
+        // HP metni (antika koyu)
         const hpText = this._el('text');
-        hpText.setAttribute('x', t.cx);
-        hpText.setAttribute('y', by + barH + 10);
+        hpText.setAttribute('x', t.cx); hpText.setAttribute('y', by + barH + 9);
         hpText.setAttribute('text-anchor', 'middle');
-        hpText.setAttribute('fill', 'rgba(200,220,255,0.7)');
-        hpText.setAttribute('font-size', '8');
-        hpText.setAttribute('font-family', 'sans-serif');
-        hpText.textContent = `❤️ ${hp}/${maxHp}`;
+        hpText.setAttribute('fill', '#3d1c02');
+        hpText.setAttribute('font-size', '7.5');
+        hpText.setAttribute('font-family', 'Cinzel, serif');
+        hpText.textContent = `${hp}/${maxHp}`;
         g.appendChild(hpText);
     }
 
     _renderArmyCount(g, t, owner) {
-        // Toplam asker sayısı
         let total = 0;
         if (owner.grid) {
             owner.grid.forEach(cell => {
@@ -420,18 +520,17 @@ export class MapRenderer {
         }
         if (total === 0) return;
 
-        const ax = t.cx + 36;
-        const ay = t.cy - 6;
+        const ax = t.cx + 40;
+        const ay = t.cy - 8;
 
+        // Parşömen rozet arka planı
         const armyBg = this._el('rect');
-        armyBg.setAttribute('x', ax - 14);
-        armyBg.setAttribute('y', ay - 10);
-        armyBg.setAttribute('width', '28');
-        armyBg.setAttribute('height', '16');
-        armyBg.setAttribute('fill', 'rgba(0,0,0,0.6)');
-        armyBg.setAttribute('rx', '4');
-        armyBg.setAttribute('stroke', 'rgba(200,200,200,0.2)');
-        armyBg.setAttribute('stroke-width', '0.5');
+        armyBg.setAttribute('x', ax - 15); armyBg.setAttribute('y', ay - 9);
+        armyBg.setAttribute('width', '30'); armyBg.setAttribute('height', '14');
+        armyBg.setAttribute('fill', '#dcc898');
+        armyBg.setAttribute('stroke', '#4a2c0a');
+        armyBg.setAttribute('stroke-width', '0.8');
+        armyBg.setAttribute('rx', '2');
         g.appendChild(armyBg);
 
         const armyText = this._el('text');
@@ -439,9 +538,9 @@ export class MapRenderer {
         armyText.setAttribute('y', ay + 1);
         armyText.setAttribute('text-anchor', 'middle');
         armyText.setAttribute('dominant-baseline', 'middle');
-        armyText.setAttribute('fill', '#fbbf24');
-        armyText.setAttribute('font-size', '9');
-        armyText.setAttribute('font-family', 'sans-serif');
+        armyText.setAttribute('fill', '#3d1c02');
+        armyText.setAttribute('font-size', '8');
+        armyText.setAttribute('font-family', 'Cinzel, serif');
         armyText.setAttribute('font-weight', '700');
         armyText.classList.add('territory-army');
         armyText.textContent = `⚔${total}`;
@@ -472,18 +571,21 @@ export class MapRenderer {
             if (tId === activeIdx) {
                 this.selectedTerritory = (this.selectedTerritory === tId) ? null : tId;
                 this.render();
-                // Bina inşaatı için panel aç
+                // Kendi bölgesine tıklayınca el kartı panelini göster/gizle
+                this._toggleHandPanel(this.selectedTerritory !== null);
                 if (this.selectedTerritory !== null && this.onTerritorySelect) {
                     this.onTerritorySelect(tId);
                 }
+            } else {
+                // Başka bölgeye tıkladıysa hand panelini kapat
+                this._toggleHandPanel(false);
             }
             return;
         }
 
         if (mode === 'attack') {
-            // Saldırı hedefi seç — komşu ve düşman olmalı
-            const neighbors = this.adjacency[activeIdx] || [];
-            if (!neighbors.includes(tId)) {
+            // Saldırı hedefi seç — komşu veya vasal geçiş ile erişilebilir olmalı
+            if (!this._canAttackTerritory(activeIdx, tId)) {
                 this._showMapToast('Bu bölgeye saldıramazsın — komşu değil!');
                 return;
             }
@@ -542,10 +644,142 @@ export class MapRenderer {
         if (game.actionMode !== 'attack') return false;
         const activePlayer = game.getActivePlayer();
         const activeIdx = game.players.indexOf(activePlayer);
-        const neighbors = this.adjacency[activeIdx] || [];
-        if (!neighbors.includes(tId)) return false;
+        if (!this._canAttackTerritory(activeIdx, tId)) return false;
         const targetPlayer = game.players[tId];
         return targetPlayer && targetPlayer !== activePlayer && !targetPlayer.eliminated;
+    }
+
+    /**
+     * Aktif oyuncunun tId bölgesine saldırıp saldıramayacağını kontrol eder.
+     * Doğrudan komşu olduğunda TRUE.
+     * Aralarında aktif oyuncunun vasalı varsa da TRUE (vasal geçiş saldırısı).
+     */
+    _canAttackTerritory(activeIdx, tId) {
+        const game = this.game;
+        const activePlayer = game.players[activeIdx];
+        const direct = this.adjacency[activeIdx] || [];
+
+        // Doğrudan komşu
+        if (direct.includes(tId)) return true;
+
+        // Vasal geçiş: komşu bölge aktif oyuncunun vasalıysa, o vasalın komşuları da erişilebilir
+        for (const neighborId of direct) {
+            const neighbor = game.players[neighborId];
+            if (neighbor && neighbor.isVassal && neighbor.masterId === activePlayer.id) {
+                const vassalNeighbors = this.adjacency[neighborId] || [];
+                if (vassalNeighbors.includes(tId)) return true;
+            }
+        }
+
+        return false;
+    }
+
+    // ─── El Kartı Paneli (harita üzeri) ──────────────────────────────────────
+
+    _toggleHandPanel(show) {
+        let panel = document.getElementById('map-hand-panel');
+
+        if (!show) {
+            if (panel) panel.remove();
+            return;
+        }
+
+        const game = this.game;
+        const player = game.getActivePlayer();
+        if (player.isBot) return;
+
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = 'map-hand-panel';
+            panel.className = 'map-hand-panel';
+            const container = this.svg.parentElement;
+            if (container) container.appendChild(panel);
+        }
+
+        const CARD_META = {
+            'Bina':        { icon: '🏗️', color: '#60a5fa' },
+            'Asker':       { icon: '⚔️', color: '#f87171' },
+            'Diplomasi':   { icon: '🎭', color: '#a78bfa' },
+            'Teknoloji':   { icon: '🔬', color: '#34d399' },
+            'Paralı Asker':{ icon: '💰', color: '#c084fc' },
+        };
+
+        if (player.hand.length === 0) {
+            panel.innerHTML = `<div class="mhp-title">🃏 El Kartları</div><div class="mhp-empty">Elinde kart yok</div>`;
+            return;
+        }
+
+        panel.innerHTML = `<div class="mhp-title">🃏 El Kartları <span class="mhp-count">${player.hand.length}</span></div>`;
+
+        const list = document.createElement('div');
+        list.className = 'mhp-list';
+
+        player.hand.forEach((card, idx) => {
+            const meta = CARD_META[card.type] || { icon: '🃏', color: '#94a3b8' };
+            const el = document.createElement('div');
+            el.className = 'mhp-card';
+            el.style.borderColor = meta.color + '60';
+            el.innerHTML = `
+                <span class="mhp-card-icon">${meta.icon}</span>
+                <span class="mhp-card-name">${card.name}</span>
+                <span class="mhp-card-cost">${card.cost}💰</span>
+            `;
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this._useHandCardFromMap(idx, card);
+            });
+            list.appendChild(el);
+        });
+
+        panel.appendChild(list);
+    }
+
+    _useHandCardFromMap(handIndex, card) {
+        const game = this.game;
+        const renderer = window.renderer;
+
+        if (card.type === 'Bina') {
+            const result = game.buildBuilding(handIndex);
+            if (result.success === false) { this._showMapToast(result.msg); return; }
+        } else if (card.type === 'Asker') {
+            const result = game.playAskerCard(handIndex);
+            if (result.success === false) { this._showMapToast(result.msg); return; }
+        } else if (card.type === 'Paralı Asker') {
+            const result = game.playMercenaryCard(handIndex);
+            if (result.success === false) { this._showMapToast(result.msg); return; }
+        } else if (card.type === 'Teknoloji') {
+            const result = game.playTechnologyCard(handIndex);
+            if (result.success === false) {
+                if (result.msg === 'JOKER_SELECTION_NEEDED') {
+                    if (renderer) renderer.showJokerModal(result.cardIndex, result.availableTechs);
+                } else {
+                    this._showMapToast(result.msg);
+                }
+                return;
+            }
+        } else if (card.type === 'Diplomasi') {
+            const needsTarget = card.effect && card.effect !== 'gold_boost' &&
+                card.effect !== 'military_boost' && card.effect !== 'white_flag';
+            if (!needsTarget) {
+                const result = game.playDiplomacyCard(handIndex, null);
+                if (result.success === false) { this._showMapToast(result.msg); return; }
+            } else if (game.players.length === 2) {
+                const opponent = game.players.find(p => p.id !== game.getActivePlayer().id);
+                const result = game.playDiplomacyCard(handIndex, opponent.id);
+                if (result.success === false) { this._showMapToast(result.msg); return; }
+            } else {
+                // Hedef seçimi gerekli
+                game.pendingDiplomacyCard = { cardIndex: handIndex, card };
+                if (game.onDiplomacyTargetNeeded) game.onDiplomacyTargetNeeded(card.name);
+                this._toggleHandPanel(false);
+                if (renderer) renderer.render();
+                return;
+            }
+        }
+
+        if (renderer) renderer.render();
+        this.render();
+        this._toggleHandPanel(true);
     }
 
     // ─── Harita Bildirimi ─────────────────────────────────────────────────────

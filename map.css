@@ -320,14 +320,24 @@ html, body {
 }
 
 .pc-palace-big-icon {
-  font-size: 2rem;
+  font-size: 1.1rem;
   line-height: 1;
 }
 
 .pc-palace-dp {
-  font-size: 0.62rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 3px;
+  padding: 2px 6px;
+  background: rgba(212,175,55,0.15);
+  border: 1px solid rgba(212,175,55,0.4);
+  border-radius: 10px;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.5px;
+  color: #fbbf24;
+  box-shadow: 0 0 6px rgba(212,175,55,0.2);
 }
 
 .pc-palace-info { flex: 1; min-width: 0; }
@@ -411,12 +421,30 @@ html, body {
   cursor: default;
 }
 
-/* Buildings row: sabit 2 satır, taşmaz */
-.pc-buildings-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  margin-top: 4px;
+/* Buildings row: artık pc-bld-summary ile değiştirildi */
+.pc-buildings-row { display: none; }
+
+/* Bina kapasitesi özeti */
+.pc-bld-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  padding: 4px 8px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 6px;
+  font-size: 0.72rem;
+}
+.pc-bld-summary-icon { font-size: 0.9rem; }
+.pc-bld-summary-count {
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: 0.5px;
+}
+.pc-bld-summary-soldiers {
+  margin-left: auto;
+  color: #fca5a5;
+  font-size: 0.68rem;
 }
 
 .pc-status-bar {
@@ -494,7 +522,7 @@ html, body {
   grid-area: map;
   position: relative;
   overflow: hidden;
-  background: radial-gradient(ellipse at center, #0d1117 0%, #07080f 100%);
+  background: #4a7a8a;
 }
 
 #world-map {
@@ -1825,3 +1853,279 @@ html, body {
   transition: var(--transition);
 }
 .btn-cancel-attack:hover { border-color: rgba(255,255,255,0.3); color: white; }
+
+/* ── PAZAR SEKME ÇUBUĞU ── */
+.mkt-tab-bar {
+  display: flex;
+  gap: 6px;
+  padding: 10px 20px 0;
+  border-bottom: 1px solid rgba(212,175,55,0.15);
+}
+.mkt-tab-btn {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #94a3b8;
+  padding: 6px 16px;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-family: var(--font-body);
+  transition: var(--transition);
+  border-bottom: none;
+  margin-bottom: -1px;
+}
+.mkt-tab-btn:hover { color: #e2e8f0; border-color: rgba(255,255,255,0.25); }
+.mkt-tab-btn.active {
+  background: rgba(212,175,55,0.1);
+  border-color: rgba(212,175,55,0.4);
+  color: var(--gold);
+  font-weight: 600;
+}
+
+/* ── HARİTA EL KARTI PANELİ ── */
+.map-hand-panel {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10,11,20,0.95);
+  border: 1px solid rgba(212,175,55,0.3);
+  border-radius: 12px;
+  padding: 10px 12px;
+  min-width: 260px;
+  max-width: 480px;
+  z-index: 200;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+}
+.mhp-title {
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  color: var(--gold);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mhp-count {
+  background: rgba(212,175,55,0.2);
+  border-radius: 8px;
+  padding: 1px 6px;
+  font-size: 0.68rem;
+}
+.mhp-empty {
+  color: #64748b;
+  font-size: 0.75rem;
+  text-align: center;
+  padding: 8px;
+}
+.mhp-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.mhp-card {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 7px;
+  padding: 5px 9px;
+  cursor: pointer;
+  font-size: 0.72rem;
+  transition: var(--transition);
+}
+.mhp-card:hover {
+  background: rgba(212,175,55,0.12);
+  border-color: rgba(212,175,55,0.4);
+}
+.mhp-card-icon { font-size: 0.9rem; }
+.mhp-card-name { color: #e2e8f0; font-weight: 500; }
+.mhp-card-cost { color: #fbbf24; font-size: 0.65rem; margin-left: 2px; }
+
+/* ── EL KARTI POPUP (krallık ismine tıkla) ── */
+.hand-popup {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10,11,20,0.97);
+  border: 1px solid rgba(212,175,55,0.4);
+  border-radius: 14px;
+  padding: 12px 14px;
+  min-width: 300px;
+  max-width: 520px;
+  max-height: 70vh;
+  overflow-y: auto;
+  z-index: 600;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+  backdrop-filter: blur(10px);
+}
+.hp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-family: var(--font-heading);
+  font-size: 0.82rem;
+  color: var(--gold);
+}
+.hp-count {
+  background: rgba(212,175,55,0.2);
+  border-radius: 8px;
+  padding: 1px 7px;
+  font-size: 0.7rem;
+  margin-left: 5px;
+}
+.hp-close {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0 4px;
+}
+.hp-close:hover { color: #e2e8f0; }
+.hp-empty {
+  color: #64748b;
+  text-align: center;
+  padding: 16px;
+  font-size: 0.8rem;
+}
+.hp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.hp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--card-color, rgba(255,255,255,0.1));
+  border-left: 3px solid var(--card-color, #60a5fa);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.hp-card:hover { background: rgba(255,255,255,0.09); }
+.hp-card-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.hp-card-icon { font-size: 1rem; }
+.hp-card-name { flex: 1; font-size: 0.78rem; font-weight: 600; color: #e2e8f0; }
+.hp-card-cost { font-size: 0.7rem; color: #fbbf24; }
+.hp-card-type { font-size: 0.62rem; color: #64748b; padding-left: 27px; }
+
+/* Krallık ismi tıklanabilir */
+.pc-name-clickable {
+  cursor: pointer;
+  text-decoration: underline dotted rgba(212,175,55,0.4);
+  underline-offset: 3px;
+}
+.pc-name-clickable:hover { color: var(--gold); }
+
+/* ── AKSİYON BUTONLARI (Yık / Saldır) ── */
+.action-mode-panel {
+  display: flex;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.action-mode-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  transition: all 0.18s ease;
+  background: rgba(255,255,255,0.05);
+  color: #94a3b8;
+}
+.action-mode-btn .amb-icon { font-size: 0.95rem; line-height: 1; }
+.action-mode-btn .amb-label { font-size: 0.7rem; }
+
+.action-mode-btn.demolish {
+  border-color: rgba(212,175,55,0.25);
+  color: #d4af37;
+}
+.action-mode-btn.demolish:hover,
+.action-mode-btn.demolish.active {
+  background: rgba(212,175,55,0.15);
+  border-color: rgba(212,175,55,0.6);
+  color: #fbbf24;
+  box-shadow: 0 0 10px rgba(212,175,55,0.2);
+}
+.action-mode-btn.demolish.active {
+  background: rgba(212,175,55,0.22);
+  box-shadow: 0 0 14px rgba(212,175,55,0.35);
+}
+
+.action-mode-btn.attack {
+  border-color: rgba(239,68,68,0.3);
+  color: #f87171;
+}
+.action-mode-btn.attack:hover,
+.action-mode-btn.attack.active {
+  background: rgba(239,68,68,0.15);
+  border-color: rgba(239,68,68,0.65);
+  color: #fca5a5;
+  box-shadow: 0 0 10px rgba(239,68,68,0.2);
+}
+.action-mode-btn.attack.active {
+  background: rgba(239,68,68,0.22);
+  box-shadow: 0 0 14px rgba(239,68,68,0.4);
+}
+
+/* ── DİPLOMASİ BUTONLARI (İttifak Kur / Boz) ── */
+.btn-diplo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  margin-top: 5px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  transition: all 0.18s ease;
+}
+
+.btn-propose-alliance {
+  background: rgba(5,150,105,0.12);
+  border-color: rgba(5,150,105,0.4);
+  color: #6ee7b7;
+}
+.btn-propose-alliance:hover {
+  background: rgba(5,150,105,0.22);
+  border-color: rgba(5,150,105,0.7);
+  box-shadow: 0 0 10px rgba(5,150,105,0.25);
+}
+
+.btn-break-alliance {
+  background: rgba(220,38,38,0.1);
+  border-color: rgba(220,38,38,0.35);
+  color: #fca5a5;
+}
+.btn-break-alliance:hover {
+  background: rgba(220,38,38,0.2);
+  border-color: rgba(220,38,38,0.65);
+  box-shadow: 0 0 10px rgba(220,38,38,0.25);
+}

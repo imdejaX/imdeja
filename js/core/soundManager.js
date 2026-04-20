@@ -1,242 +1,236 @@
 /**
- * Sound Effects Manager
- * Handles all game audio including UI sounds and game events
+ * SoundManager — Ortaçağ temalı ses efektleri.
+ * Web Audio API ile sıfırdan sentezlenmiş sesler.
  */
-
 export class SoundManager {
     constructor() {
         this.audioContext = null;
         this.enabled = true;
-        this.volume = 0.3; // Master volume (0.0 to 1.0)
-        this.initAudioContext();
+        this.volume = 0.35;
+        this._initCtx();
     }
 
-    /**
-     * Initialize Web Audio API context
-     */
-    initAudioContext() {
+    _initCtx() {
         try {
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
         } catch (e) {
-            console.warn('Web Audio API not supported', e);
             this.enabled = false;
         }
     }
 
-    /**
-     * Resume audio context (needed for autoplay policies)
-     */
     resumeContext() {
-        if (this.audioContext && this.audioContext.state === 'suspended') {
-            this.audioContext.resume();
-        }
+        if (this.audioContext?.state === 'suspended') this.audioContext.resume();
     }
 
-    /**
-     * Play a simple beep sound
-     * @param {number} frequency - Frequency in Hz
-     * @param {number} duration - Duration in seconds
-     * @param {string} type - Oscillator type ('sine', 'square', 'sawtooth', 'triangle')
-     */
-    playTone(frequency, duration, type = 'sine', volume = 1.0) {
+    toggle() { this.enabled = !this.enabled; return this.enabled; }
+    isEnabled() { return this.enabled; }
+    setVolume(v) { this.volume = Math.max(0, Math.min(1, v)); }
+
+    // ── Temel ses katmanı ─────────────────────────────────────────────────────
+
+    _tone(freq, dur, type = 'sine', vol = 1.0, delay = 0, attack = 0.01, release = null) {
         if (!this.enabled || !this.audioContext) return;
-
         this.resumeContext();
+        const ctx = this.audioContext;
+        const now = ctx.currentTime + delay;
 
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
 
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now);
 
-        oscillator.frequency.value = frequency;
-        oscillator.type = type;
+        const v = this.volume * vol;
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(v, now + attack);
+        const rel = release ?? dur * 0.6;
+        gain.gain.setValueAtTime(v, now + dur - rel);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
 
-        const actualVolume = this.volume * volume;
-        gainNode.gain.setValueAtTime(actualVolume, this.audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
-
-        oscillator.start(this.audioContext.currentTime);
-        oscillator.stop(this.audioContext.currentTime + duration);
+        osc.start(now);
+        osc.stop(now + dur + 0.05);
     }
 
-    /**
-     * Play button click sound
-     */
+    _noise(dur, vol = 0.5, delay = 0, highpass = 200) {
+        if (!this.enabled || !this.audioContext) return;
+        this.resumeContext();
+        const ctx = this.audioContext;
+        const now = ctx.currentTime + delay;
+        const bufLen = Math.ceil(ctx.sampleRate * dur);
+        const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.value = highpass;
+
+        const gain = ctx.createGain();
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        const v = this.volume * vol;
+        gain.gain.setValueAtTime(v, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+        src.start(now);
+        src.stop(now + dur + 0.05);
+    }
+
+    // ── Oyun Sesleri ──────────────────────────────────────────────────────────
+
+    /** Hafif tıklama — tahta üzerine parmak */
     playClick() {
-        this.playTone(800, 0.05, 'square', 0.3);
+        this._noise(0.04, 0.25, 0, 2000);
+        this._tone(320, 0.06, 'triangle', 0.2);
     }
 
-    /**
-     * Play card selection sound
-     */
+    /** Kart seçimi — parşömen hışırtısı */
     playCardSelect() {
-        this.playTone(600, 0.08, 'sine', 0.4);
-        setTimeout(() => this.playTone(900, 0.08, 'sine', 0.3), 50);
+        this._noise(0.08, 0.18, 0, 1000);
+        this._tone(520, 0.09, 'sine', 0.18, 0.03);
     }
 
-    /**
-     * Play card purchase/play sound
-     */
+    /** Kart oynama / inşaat tamamlandı */
     playCardPlay() {
-        this.playTone(500, 0.1, 'triangle', 0.5);
-        setTimeout(() => this.playTone(700, 0.1, 'triangle', 0.4), 80);
-        setTimeout(() => this.playTone(900, 0.15, 'triangle', 0.3), 150);
+        this._tone(330, 0.12, 'triangle', 0.35);
+        this._tone(495, 0.12, 'triangle', 0.28, 0.06);
+        this._tone(660, 0.18, 'triangle', 0.22, 0.12);
     }
 
-    /**
-     * Play market refresh sound
-     */
+    /** Bina yerleştirme — taş yerleşme sesi */
+    playBuildingPlace() {
+        this._noise(0.12, 0.4, 0, 100);
+        this._tone(200, 0.15, 'sawtooth', 0.22, 0.04);
+        this._tone(150, 0.18, 'triangle', 0.18, 0.10);
+    }
+
+    /** Bina yıkımı — çöküş */
+    playDemolish() {
+        this._noise(0.35, 0.55, 0, 80);
+        this._tone(120, 0.3, 'sawtooth', 0.4, 0);
+        this._tone(90, 0.35, 'sawtooth', 0.3, 0.1);
+        this._tone(60, 0.4, 'square', 0.25, 0.2);
+    }
+
+    /** Pazar tazelen — jeton ve metal sesi */
     playMarketRefresh() {
-        const notes = [440, 554, 659, 880];
-        notes.forEach((freq, index) => {
-            setTimeout(() => this.playTone(freq, 0.1, 'sine', 0.3), index * 50);
+        [880, 1100, 1320, 1760].forEach((f, i) => {
+            this._tone(f, 0.09, 'triangle', 0.22, i * 0.055);
         });
     }
 
-    /**
-     * Play turn end sound
-     */
+    /** Altın kazanma — sikke şıkırtısı */
+    playGold() {
+        [1200, 1500, 1800].forEach((f, i) => {
+            this._tone(f, 0.07, 'triangle', 0.28, i * 0.045);
+        });
+        this._noise(0.06, 0.12, 0, 3000);
+    }
+
+    /** Tur sonu — yavaş davul */
     playTurnEnd() {
-        this.playTone(400, 0.15, 'sawtooth', 0.4);
-        setTimeout(() => this.playTone(300, 0.2, 'sawtooth', 0.5), 150);
+        this._noise(0.25, 0.5, 0, 50);
+        this._tone(110, 0.3, 'sawtooth', 0.4, 0);
+        this._tone(90, 0.35, 'sawtooth', 0.3, 0.15);
     }
 
-    /**
-     * Play turn start notification
-     */
+    /** Tur başlangıcı — boru fanfar */
     playTurnStart() {
-        this.playTone(600, 0.1, 'sine', 0.5);
-        setTimeout(() => this.playTone(800, 0.15, 'sine', 0.6), 100);
+        this._tone(440, 0.12, 'sawtooth', 0.3, 0);
+        this._tone(550, 0.12, 'sawtooth', 0.28, 0.1);
+        this._tone(660, 0.2, 'sawtooth', 0.32, 0.2);
+        this._tone(880, 0.3, 'sawtooth', 0.28, 0.35);
     }
 
-    /**
-     * Play attack/combat sound
-     */
+    /** Saldırı başlatma — savaş borusu */
     playAttack() {
-        // Aggressive sound
-        this.playTone(200, 0.15, 'sawtooth', 0.6);
-        setTimeout(() => this.playTone(150, 0.1, 'square', 0.5), 80);
+        this._tone(220, 0.1, 'sawtooth', 0.45, 0);
+        this._tone(165, 0.15, 'square', 0.4, 0.08);
+        this._noise(0.2, 0.45, 0.05, 200);
     }
 
-    /**
-     * Play victory sound (successful attack)
-     */
+    /** Zafer — kısa fanfar */
     playVictory() {
-        const melody = [523, 659, 784, 1047]; // C, E, G, C (octave higher)
-        melody.forEach((freq, index) => {
-            setTimeout(() => this.playTone(freq, 0.2, 'triangle', 0.4), index * 150);
+        [523, 659, 784, 1047].forEach((f, i) => {
+            this._tone(f, 0.22, 'sawtooth', 0.3, i * 0.13);
         });
+        this._tone(784, 0.4, 'triangle', 0.2, 0.55);
     }
 
-    /**
-     * Play defeat sound (failed attack/defense)
-     */
+    /** Yenilgi — alçalan boru */
     playDefeat() {
-        const melody = [400, 350, 300, 250];
-        melody.forEach((freq, index) => {
-            setTimeout(() => this.playTone(freq, 0.15, 'sawtooth', 0.3), index * 100);
+        [440, 370, 310, 245].forEach((f, i) => {
+            this._tone(f, 0.18, 'sawtooth', 0.28, i * 0.11);
         });
     }
 
-    /**
-     * Play dice roll sound
-     */
+    /** Zar atma — tahta üzerinde yuvarlanma */
     playDiceRoll() {
-        // Rapid random tones to simulate dice rolling
-        for (let i = 0; i < 8; i++) {
-            const randomFreq = 200 + Math.random() * 400;
-            setTimeout(() => this.playTone(randomFreq, 0.05, 'square', 0.2), i * 50);
+        for (let i = 0; i < 9; i++) {
+            const f = 150 + Math.random() * 300;
+            this._noise(0.04, 0.22, i * 0.06, f);
         }
     }
 
-    /**
-     * Play building placement sound
-     */
-    playBuildingPlace() {
-        this.playTone(300, 0.1, 'triangle', 0.4);
-        setTimeout(() => this.playTone(400, 0.15, 'sine', 0.5), 100);
-    }
-
-    /**
-     * Play demolish sound
-     */
-    playDemolish() {
-        this.playTone(250, 0.2, 'sawtooth', 0.5);
-        setTimeout(() => this.playTone(200, 0.15, 'square', 0.4), 150);
-    }
-
-    /**
-     * Play alliance formed sound
-     */
+    /** İttifak kuruldu — uyumlu akor */
     playAlliance() {
-        const harmony = [440, 554, 659]; // A major chord
-        harmony.forEach((freq, index) => {
-            setTimeout(() => this.playTone(freq, 0.3, 'sine', 0.3), index * 30);
+        [440, 554, 659, 880].forEach((f, i) => {
+            this._tone(f, 0.5, 'sine', 0.22, i * 0.04);
         });
     }
 
-    /**
-     * Play modal open sound
-     */
+    /** Diplomasi kartı — gizemli tını */
+    playDiplomacy() {
+        this._tone(370, 0.25, 'triangle', 0.28, 0);
+        this._tone(466, 0.25, 'triangle', 0.22, 0.08);
+        this._tone(554, 0.3, 'sine', 0.18, 0.18);
+    }
+
+    /** Asker toplandı — marş davulu */
+    playSoldierRecruit() {
+        this._noise(0.08, 0.35, 0, 300);
+        this._noise(0.08, 0.35, 0.15, 300);
+        this._tone(220, 0.08, 'square', 0.2, 0.3);
+    }
+
+    /** Bina yıkıldı (düşman saldırısıyla) */
+    playBuildingDestroyed() {
+        this._noise(0.5, 0.6, 0, 60);
+        this._tone(100, 0.4, 'sawtooth', 0.45, 0);
+        this._tone(75, 0.5, 'square', 0.35, 0.15);
+        this._tone(50, 0.6, 'sawtooth', 0.3, 0.3);
+    }
+
+    /** Modal açma — parşömen açılışı */
     playModalOpen() {
-        this.playTone(600, 0.08, 'sine', 0.3);
+        this._noise(0.06, 0.15, 0, 1500);
+        this._tone(660, 0.07, 'sine', 0.15, 0.04);
     }
 
-    /**
-     * Play modal close sound
-     */
+    /** Modal kapama */
     playModalClose() {
-        this.playTone(500, 0.08, 'sine', 0.3);
+        this._tone(550, 0.06, 'sine', 0.15);
+        this._noise(0.05, 0.1, 0.03, 1500);
     }
 
-    /**
-     * Play error/invalid action sound
-     */
+    /** Hata */
     playError() {
-        this.playTone(200, 0.2, 'sawtooth', 0.4);
+        this._tone(180, 0.15, 'sawtooth', 0.4);
+        this._tone(160, 0.2, 'square', 0.35, 0.1);
     }
 
-    /**
-     * Play success sound (generic positive feedback)
-     */
+    /** Başarı */
     playSuccess() {
-        this.playTone(700, 0.1, 'sine', 0.4);
-        setTimeout(() => this.playTone(900, 0.15, 'sine', 0.5), 100);
-    }
-
-    /**
-     * Play coin/gold sound
-     */
-    playGold() {
-        this.playTone(800, 0.05, 'triangle', 0.3);
-        setTimeout(() => this.playTone(1000, 0.05, 'triangle', 0.3), 50);
-        setTimeout(() => this.playTone(1200, 0.1, 'triangle', 0.3), 100);
-    }
-
-    /**
-     * Toggle sound on/off
-     */
-    toggle() {
-        this.enabled = !this.enabled;
-        return this.enabled;
-    }
-
-    /**
-     * Set master volume
-     * @param {number} vol - Volume from 0.0 to 1.0
-     */
-    setVolume(vol) {
-        this.volume = Math.max(0, Math.min(1, vol));
-    }
-
-    /**
-     * Get current enabled state
-     */
-    isEnabled() {
-        return this.enabled;
+        this._tone(660, 0.1, 'triangle', 0.35);
+        this._tone(880, 0.18, 'triangle', 0.3, 0.08);
     }
 }
 
-// Create and export a singleton instance
 export const soundManager = new SoundManager();

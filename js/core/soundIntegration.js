@@ -11,7 +11,7 @@ export function integrateSounds() {
     // Store original methods
     const originalBuyCard = window.renderer.game.buyCard.bind(window.renderer.game);
     const originalBuildOnSlot = window.renderer.game.buildOnSlot.bind(window.renderer.game);
-    const originalDemolishBuilding = window.renderer.game.demolish Building.bind(window.renderer.game);
+    const originalDemolishBuilding = window.renderer.game.demolishBuilding.bind(window.renderer.game);
     const originalInitiateAttack = window.renderer.game.initiateAttack.bind(window.renderer.game);
     const originalProposeAlliance = window.renderer.game.proposeAlliance.bind(window.renderer.game);
     const originalBreakAlliance = window.renderer.game.breakAlliance.bind(window.renderer.game);
@@ -53,7 +53,7 @@ export function integrateSounds() {
     window.renderer.game.initiateAttack = function (...args) {
         const result = originalInitiateAttack(...args);
         if (result.success !== false && window.soundManager) {
-            window.soundManager.playClick();
+            window.soundManager.playAttack();
         } else if (window.soundManager) {
             window.soundManager.playError();
         }
@@ -75,7 +75,7 @@ export function integrateSounds() {
     window.renderer.game.breakAlliance = function (...args) {
         const result = originalBreakAlliance(...args);
         if (window.soundManager) {
-            window.soundManager.playError();
+            window.soundManager.playDemolish();
         }
         return result;
     };
@@ -84,7 +84,7 @@ export function integrateSounds() {
     window.renderer.game.playDiplomacyCard = function (...args) {
         const result = originalPlayDiplomacyCard(...args);
         if (result.success !== false && window.soundManager) {
-            window.soundManager.playCardPlay();
+            window.soundManager.playDiplomacy();
         } else if (window.soundManager) {
             window.soundManager.playError();
         }

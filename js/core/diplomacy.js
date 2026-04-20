@@ -178,13 +178,7 @@ export const DiplomacyMixin = {
                     }
 
                     case 'terror_joker': {
-                        if (player.dp < 10) {
-                            this.log(`❌ TERÖR JOKERİ BAŞARISIZ! ${player.name} yeterli DP'ye sahip değil! (${player.dp}/10)`);
-                            player.hand.push(card);
-                            player.actionsRemaining += 1;
-                            return { success: false, msg: `En az 10 DP gerekli! (Mevcut: ${player.dp})` };
-                        }
-
+                        // No DP requirement — the 20 gold cost is sufficient gating
                         player.dp = Math.max(0, player.dp - 2);
 
                         const destructibleBuildings = target.grid
