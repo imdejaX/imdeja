@@ -468,6 +468,7 @@ export class Renderer {
             ${p.isVassal && masterName ? `<div class="pc-vassal-badge">⛓️ ${masterName}</div>` : ''}
             ${allyName ? `<div class="pc-ally-badge">🤝 ${allyName}</div>` : ''}
             ${p.whiteFlagTurns > 0 ? `<div class="pc-flag-badge">🏳️ Barış (${p.whiteFlagTurns})</div>` : ''}
+            ${p.mustRetaliateAgainst ? (() => { const t = this.game.players.find(x => x.id === p.mustRetaliateAgainst); return t ? `<div class="pc-retaliate-badge">⚔️ Misilleme: ${t.name}</div>` : ''; })() : ''}
 
             <!-- Saray -->
             <div class="pc-palace-block" data-pid="${p.id}">
@@ -515,6 +516,13 @@ export class Renderer {
             ${!isActive && !p.allianceWith && !p.isVassal && !this.game.getActivePlayer().isVassal && !this.game.getActivePlayer().allianceWith && this.game.players.length >= 3 ? `
                 <button class="btn-diplo btn-propose-alliance"><span>🤝</span> İttifak Kur</button>
             ` : ''}
+            ${(() => {
+                const activeP = this.game.getActivePlayer();
+                if (!isActive && p.isVassal && p.masterId === activeP.id) {
+                    return `<button class="btn-diplo btn-vassal-land" data-vassal-id="${p.id}" style="background:rgba(212,175,55,0.2);border-color:#d4af37;color:#d4af37;">📐 Arazi Yönet</button>`;
+                }
+                return '';
+            })()}
         `;
         return div;
     }
@@ -560,6 +568,14 @@ export class Renderer {
                     this.render();
                 }
             };
+        }
+
+        const vassalLandBtn = div.querySelector('.btn-vassal-land');
+        if (vassalLandBtn) {
+            vassalLandBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showVassalLandModal(parseInt(vassalLandBtn.dataset.vassalId));
+            });
         }
 
         // Diplomasi hedef — oyuncu kartına (palace-row veya karta) tıklayınca
@@ -788,9 +804,9 @@ export class Renderer {
                         card.effect !== 'white_flag';
 
                     if (needsTarget) {
-                        if (this.game.players.length === 2) {
-                            const opponent = this.game.players.find(p => p.id !== this.game.getActivePlayer().id);
-                            const result = this.game.playDiplomacyCard(index, opponent.id);
+                        const independentOpponents = this.game.players.filter(p => !p.isVassal && p.id !== this.game.getActivePlayer().id);
+                        if (independentOpponents.length === 1) {
+                            const result = this.game.playDiplomacyCard(index, independentOpponents[0].id);
                             if (result.success === false) alert(result.msg);
                             this.render();
                         } else {
@@ -926,15 +942,17 @@ export class Renderer {
                 const result = game.playDiplomacyCard(handIndex, null);
                 if (result.success === false) alert(result.msg);
                 else this.render();
-            } else if (game.players.length === 2) {
-                const opponent = game.players.find(pl => pl.id !== game.getActivePlayer().id);
-                const result = game.playDiplomacyCard(handIndex, opponent.id);
-                if (result.success === false) alert(result.msg);
-                else this.render();
             } else {
-                game.pendingDiplomacyCard = { cardIndex: handIndex, card };
-                if (game.onDiplomacyTargetNeeded) game.onDiplomacyTargetNeeded(card.name);
-                this.render();
+                const independentOpponents = game.players.filter(p => !p.isVassal && p.id !== game.getActivePlayer().id);
+                if (independentOpponents.length === 1) {
+                    const result = game.playDiplomacyCard(handIndex, independentOpponents[0].id);
+                    if (result.success === false) alert(result.msg);
+                    else this.render();
+                } else {
+                    game.pendingDiplomacyCard = { cardIndex: handIndex, card };
+                    if (game.onDiplomacyTargetNeeded) game.onDiplomacyTargetNeeded(card.name);
+                    this.render();
+                }
             }
         }
     }

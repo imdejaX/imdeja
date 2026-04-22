@@ -67,6 +67,7 @@ export class Game {
             isVassal: false,
             masterId: null,
             allianceWith: null,
+            mustRetaliateAgainst: null,
             technologies: {
                 food: 0,
                 military: 0,
@@ -116,7 +117,7 @@ export class Game {
             { name: 'Propaganda', cost: 6, type: 'Diplomasi', dp: 2, effect: 'steal_unit' },
             { name: 'Askeri Gösteri', cost: 3, type: 'Diplomasi', dp: 1, effect: 'military_boost' },
             { name: 'Nifak Tohumu', cost: 7, type: 'Diplomasi', dp: 3, effect: 'break_alliance' },
-            { name: 'Beyaz Bayrak', cost: 5, type: 'Diplomasi', dp: 1, effect: 'white_flag', duration: 1 },
+            { name: 'Beyaz Bayrak', cost: 5, type: 'Diplomasi', dp: 1, effect: 'white_flag', duration: 2 },
             { name: 'Mimari Onarım', cost: 4, type: 'Diplomasi', dp: 2, effect: 'repair_building' },
             { name: 'Terör Jokeri', cost: 20, type: 'Diplomasi', dp: 0, effect: 'terror_joker' }
         ];
@@ -183,38 +184,51 @@ export class Game {
         const requiredTypes = ['Bina', 'Asker', 'Diplomasi', 'Teknoloji'];
         const player = this.getActivePlayer();
 
+        // Desteden rastgele bir eşleşen kart seç ve çıkar
+        const pickRandom = (predicate) => {
+            const indices = [];
+            for (let i = 0; i < this.market.length; i++) {
+                if (predicate(this.market[i])) indices.push(i);
+            }
+            if (indices.length === 0) return -1;
+            return indices[Math.floor(Math.random() * indices.length)];
+        };
+
         requiredTypes.forEach(type => {
             if (this.openMarket.some(c => c.type === type)) return;
 
             if (type === 'Teknoloji') {
-                for (let i = 0; i < this.market.length; i++) {
+                // Önce eskimiş seviyeleri temizle
+                for (let i = this.market.length - 1; i >= 0; i--) {
                     const card = this.market[i];
-                    if (card.type !== 'Teknoloji') continue;
-
-                    if (card.isJoker) {
-                        this.openMarket.push(this.market.splice(i, 1)[0]);
-                        break;
-                    }
-
-                    const currentLevel = player.technologies[card.techType];
-                    if (card.level === currentLevel + 1) {
-                        const hasInHand = player.hand.some(h =>
-                            h.type === 'Teknoloji' && h.techType === card.techType && h.level === card.level
-                        );
-                        if (!hasInHand) {
-                            this.openMarket.push(this.market.splice(i, 1)[0]);
-                            break;
-                        }
-                    } else if (card.level <= currentLevel) {
+                    if (card.type !== 'Teknoloji' || card.isJoker) continue;
+                    if (card.level <= player.technologies[card.techType]) {
                         this.market.splice(i, 1);
-                        i--;
                     }
                 }
-            } else {
-                const cardIndex = this.market.findIndex(c => c.type === type);
-                if (cardIndex !== -1) {
-                    this.openMarket.push(this.market.splice(cardIndex, 1)[0]);
+
+                // Joker varsa önce joker göster, yoksa uygun seviye teknoloji
+                let idx = pickRandom(c => c.type === 'Teknoloji' && c.isJoker);
+                if (idx === -1) {
+                    idx = pickRandom(c => {
+                        if (c.type !== 'Teknoloji' || c.isJoker) return false;
+                        if (c.level !== player.technologies[c.techType] + 1) return false;
+                        return !player.hand.some(h =>
+                            h.type === 'Teknoloji' && h.techType === c.techType && h.level === c.level
+                        );
+                    });
                 }
+                if (idx !== -1) this.openMarket.push(this.market.splice(idx, 1)[0]);
+
+            } else if (type === 'Diplomasi') {
+                // Terör Jokeri'ni sona bırak — önce diğer diplomasi kartları
+                let idx = pickRandom(c => c.type === 'Diplomasi' && c.effect !== 'terror_joker');
+                if (idx === -1) idx = pickRandom(c => c.type === 'Diplomasi');
+                if (idx !== -1) this.openMarket.push(this.market.splice(idx, 1)[0]);
+
+            } else {
+                const idx = pickRandom(c => c.type === type);
+                if (idx !== -1) this.openMarket.push(this.market.splice(idx, 1)[0]);
             }
         });
     }
@@ -510,6 +524,12 @@ export class Game {
 
         this.isTurnTransitioning = true;
 
+        // Dayanışma zorunluluğu — tur bitmeden önce temizle
+        const currentPlayer = this.getActivePlayer();
+        if (currentPlayer.mustRetaliateAgainst !== null) {
+            currentPlayer.mustRetaliateAgainst = null;
+        }
+
         if (this.autoEndTimer) { clearTimeout(this.autoEndTimer); this.autoEndTimer = null; }
         if (this.combatWaitTimer) { clearTimeout(this.combatWaitTimer); this.combatWaitTimer = null; }
         if (this.botSafetyTimer) { clearTimeout(this.botSafetyTimer); this.botSafetyTimer = null; }
@@ -527,6 +547,18 @@ export class Game {
             this.log(`TUR ${this.turn} BAŞLADI`);
         }
 
+        // Son 2 bağımsız krallık kaldıysa ittifak otomatik bozulur
+        const independent = this.players.filter(p => !p.isVassal);
+        if (independent.length <= 2) {
+            const allied = independent.find(p => p.allianceWith !== null);
+            if (allied) {
+                const ally = this.players.find(a => a.id === allied.allianceWith);
+                allied.allianceWith = null;
+                if (ally) ally.allianceWith = null;
+                this.log(`⚡ Son iki bağımsız krallık kaldı — ittifak otomatik bozuldu! Biri kazanmalı.`);
+            }
+        }
+
         const nextPlayer = this.getActivePlayer();
         console.log(`🎯 Turn ${this.turn}, Player Index ${this.activePlayerIndex}: ${nextPlayer.name} (Bot: ${nextPlayer.isBot}, Vassal: ${nextPlayer.isVassal})`);
 
@@ -538,7 +570,8 @@ export class Game {
             setTimeout(() => {
                 this.isTurnTransitioning = false;
                 this.endTurn();
-                window.renderer.render();
+                if (window.renderer) window.renderer.render();
+                if (window.mapRenderer) window.mapRenderer.render();
             }, 1500);
             return;
         } else {
@@ -583,7 +616,8 @@ export class Game {
 
                 try {
                     await window.botAI.executeTurn(nextPlayer);
-                    window.renderer.render();
+                    if (window.renderer) window.renderer.render();
+                    if (window.mapRenderer) window.mapRenderer.render();
                     await new Promise(resolve => setTimeout(resolve, 800));
 
                     if (this.botSafetyTimer) clearTimeout(this.botSafetyTimer);
@@ -594,7 +628,8 @@ export class Game {
                     if (this.activePlayerIndex !== currentTurnIndex) return;
 
                     this.endTurn();
-                    window.renderer.render();
+                    if (window.renderer) window.renderer.render();
+                    if (window.mapRenderer) window.mapRenderer.render();
                 } catch (error) {
                     console.error('Bot turn error:', error);
                     if (this.botSafetyTimer) clearTimeout(this.botSafetyTimer);
@@ -671,6 +706,55 @@ export class Game {
             notification.classList.add('fade-out');
             setTimeout(() => { notification.style.display = 'none'; }, 300);
         }, 3000);
+    }
+
+    buildOnVassalLand(vassalId, slotIndex) {
+        const master = this.getActivePlayer();
+        if (master.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
+        if (this.selectedCardIndex === null) return { success: false, msg: "Önce el kartlarından bina seçin." };
+
+        const vassal = this.players.find(p => p.id === vassalId);
+        if (!vassal || !vassal.isVassal || vassal.masterId !== master.id)
+            return { success: false, msg: "Bu vassal'ınız değil!" };
+        if (slotIndex === 0) return { success: false, msg: "Saray slotu kullanılamaz!" };
+        if (vassal.grid[slotIndex]) return { success: false, msg: "Alan dolu!" };
+
+        const card = master.hand[this.selectedCardIndex];
+        if (!card || card.type !== 'Bina') return { success: false, msg: "Sadece bina kartları inşa edilebilir!" };
+
+        const building = { type: card.name, hp: card.hp || 3, power: card.power || 0, ownerId: master.id };
+        if (card.name === 'Kışla') building.garrison = [];
+        if (card.name === 'Bilim Merkezi') { building.garrison = []; building.capacity = 5; }
+
+        vassal.grid[slotIndex] = building;
+        master.actionsRemaining -= 1;
+        master.hand.splice(this.selectedCardIndex, 1);
+        this.selectedCardIndex = null;
+
+        this.log(`🏗️ ${master.name}, ${vassal.name} topraklarına ${card.name} inşa etti!`);
+        this.checkAutoEndTurn();
+        return { success: true };
+    }
+
+    demolishOnVassalLand(vassalId, slotIndex) {
+        const master = this.getActivePlayer();
+        if (master.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
+
+        const vassal = this.players.find(p => p.id === vassalId);
+        if (!vassal || !vassal.isVassal || vassal.masterId !== master.id)
+            return { success: false, msg: "Bu vassal'ınız değil!" };
+
+        const cell = vassal.grid[slotIndex];
+        if (!cell) return { success: false, msg: "Boş alan!" };
+        if (cell.type === 'Saray') return { success: false, msg: "Saray yıkılamaz!" };
+        if (cell.ownerId !== master.id) return { success: false, msg: "Bu bina size ait değil!" };
+
+        vassal.grid[slotIndex] = null;
+        master.actionsRemaining -= 1;
+        this.clearActionMode();
+        this.log(`🔨 ${master.name}, ${vassal.name} topraklarındaki ${cell.type} binasını yıktı!`);
+        this.checkAutoEndTurn();
+        return { success: true };
     }
 }
 

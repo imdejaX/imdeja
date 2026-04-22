@@ -67,11 +67,19 @@ export const EconomyMixin = {
         const commerceMultipliers = [1, 1.5, 2, 2.5, 3];
         income += Math.floor(markets * commerceMultipliers[p.technologies.commerce]);
 
-        // 3. Vassal tax income
+        // 3. Vassal tax income + master-owned building income on vassal lands
         const vassals = this.players.filter(v => v.masterId === p.id);
         const vassalIncome = vassals.length;
         income += vassalIncome;
         if (vassalIncome > 0) p.turnReport.taxReceived = vassalIncome;
+
+        vassals.forEach(v => {
+            v.grid.forEach(cell => {
+                if (!cell || cell.ownerId !== p.id) return;
+                if (cell.type === 'Çiftlik') income += 1;
+                if (cell.type === 'Pazar') income += Math.floor(commerceMultipliers[p.technologies.commerce]);
+            });
+        });
 
         // 4. Vassal tax: vasal efendiye vergi öder
         if (p.isVassal && p.gold > 0) {
@@ -92,9 +100,17 @@ export const EconomyMixin = {
         p.totalGoldEarned += income;
         p.turnReport.income = income;
 
-        // 7. Barracks spawn soldiers
+        // 7. Barracks spawn soldiers (own grid + master-owned on vassal lands)
         const generatedSoldiers = [];
-        p.grid.forEach(cell => {
+        const allBarracks = [...p.grid];
+        this.players.forEach(v => {
+            if (v.isVassal && v.masterId === p.id) {
+                v.grid.forEach(cell => {
+                    if (cell && cell.type === 'Kışla' && cell.ownerId === p.id) allBarracks.push(cell);
+                });
+            }
+        });
+        allBarracks.forEach(cell => {
             if (cell && cell.type === 'Kışla') {
                 const soldierTypes = [
                     { name: 'Piyade', cost: 2, type: 'Asker', power: 2, hp: 3, isUnit: true },
@@ -117,14 +133,10 @@ export const EconomyMixin = {
         p.grid.forEach(cell => {
             if (cell && cell.type === 'Bilim Merkezi') {
                 if (!cell.garrison) cell.garrison = [];
-                if (cell.garrison.length < 5) {
-                    if (p.gold >= 1) {
-                        p.gold -= 1;
-                        cell.garrison.push({ name: 'Bilim İnsanı', type: 'Nüfus', power: 0 });
-                        this.log(`🧪 ${p.name}, Bilim Merkezi'ne yeni bilim insanı aldı! (-1 Altın)`);
-                    }
-                } else {
-                    this.log(`⚠️ ${p.name}'in Bilim Merkezi dolu! (5/5)`);
+                if (cell.garrison.length < 5 && p.gold >= 1) {
+                    p.gold -= 1;
+                    cell.garrison.push({ name: 'Bilim İnsanı', type: 'Nüfus', power: 0 });
+                    this.log(`🧪 ${p.name}, Bilim Merkezi'ne yeni bilim insanı aldı! (-1 Altın)`);
                 }
             }
         });

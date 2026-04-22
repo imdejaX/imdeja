@@ -11,7 +11,23 @@ export const TechnologyMixin = {
         const card = player.hand[handIndex];
         if (!card || card.type !== 'Teknoloji') return { success: false, msg: "Geçersiz kart!" };
 
-        // Joker kartı Bilim Merkezi ve bilim insanı gerektirmez (10 altın maliyetiyle özel kart)
+        // Joker kartı da Bilim Merkezi ve 3 bilim insanı gerektirir
+        if (card.isJoker) {
+            const hasScienceCenter = player.grid.some(cell => cell && cell.type === 'Bilim Merkezi');
+            if (!hasScienceCenter) {
+                return { success: false, msg: "Teknoloji geliştirmek için 'Bilim Merkezi' binasına sahip olmalısınız!" };
+            }
+            let totalScientists = 0;
+            player.grid.forEach(cell => {
+                if (cell && cell.type === 'Bilim Merkezi' && cell.garrison) {
+                    totalScientists += cell.garrison.length;
+                }
+            });
+            if (totalScientists < 3) {
+                return { success: false, msg: `Joker için 3 Bilim İnsanı gerekli! (Mevcut: ${totalScientists})` };
+            }
+        }
+
         if (!card.isJoker) {
             const hasScienceCenter = player.grid.some(cell => cell && cell.type === 'Bilim Merkezi');
             if (!hasScienceCenter) {

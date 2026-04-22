@@ -134,74 +134,110 @@ export const ModalRendererMixin = {
     },
 
     showVassalGridModal(vassalId) {
+        this.showVassalLandModal(vassalId, false);
+    },
+
+    showVassalLandModal(vassalId, interactive = true) {
         const vassal = this.game.players.find(p => p.id === vassalId);
         if (!vassal) return;
+        const master = this.game.getActivePlayer();
+        const isMaster = vassal.masterId === master.id;
 
-        let modal = document.getElementById('vassal-grid-modal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'vassal-grid-modal';
-            modal.style.cssText = `
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background: rgba(0, 0, 0, 0.85); display: flex;
-                justify-content: center; align-items: center;
-                z-index: 10000; backdrop-filter: blur(5px);
-            `;
-            document.body.appendChild(modal);
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) modal.style.display = 'none';
-            });
+        const hasBuildingSelected = interactive && isMaster &&
+            master.hand[this.game.selectedCardIndex]?.type === 'Bina';
+        const isDemolishMode = interactive && isMaster && this.game.actionMode === 'demolish';
+
+        let hint = '';
+        if (interactive && isMaster) {
+            if (hasBuildingSelected) hint = '🏗️ Boş slota tıklayarak bina inşa edebilirsin.';
+            else if (isDemolishMode) hint = '🔨 Binaya tıklayarak yıkabilirsin (sadece kendi binaların).';
+            else hint = '📐 El kartlarından bina seç veya Yık modunu aktif et.';
         }
 
-        modal.innerHTML = `
-            <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px; border-radius: 16px; max-width: 600px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); border: 2px solid ${vassal.color};">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2 style="margin: 0; color: ${vassal.color}; font-size: 1.5rem; text-shadow: 0 0 10px ${vassal.color};">
-                        ⛓️ ${vassal.name} Krallığı
-                    </h2>
-                    <button id="close-vassal-modal" style="background: #dc2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 1rem;">✕</button>
-                </div>
-                <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                    <div style="display: flex; gap: 20px; justify-content: space-around; font-size: 0.9rem;">
-                        <span style="color: #fbbf24;">💰 Altın: ${vassal.gold}</span>
-                        <span style="color: #60a5fa;">👥 Nüfus: ${vassal.pop}</span>
-                        <span style="color: #a78bfa;">🎯 DP: ${vassal.dp}</span>
-                    </div>
-                </div>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px;">
-                    ${vassal.grid.map((cell) => `
-                        <div style="
-                            background: ${cell ? 'rgba(59, 130, 246, 0.2)' : 'rgba(0,0,0,0.3)'};
-                            border: 2px solid ${cell ? (cell.type === 'Saray' ? '#fbbf24' : '#3b82f6') : '#374151'};
-                            border-radius: 8px; padding: 12px; text-align: center;
-                            min-height: 80px; display: flex; flex-direction: column;
-                            justify-content: center; align-items: center;
-                            ${cell?.type === 'Saray' ? 'box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);' : ''}
-                        ">
-                            ${cell ? `
-                                <div style="font-size: 1.5rem; margin-bottom: 4px;">${this.getBuildingIcon(cell.type)}</div>
-                                <div style="font-size: 0.75rem; font-weight: 600; color: #e5e7eb; margin-bottom: 4px;">${cell.type}</div>
-                                <div style="font-size: 0.7rem; color: #9ca3af; display: flex; gap: 6px; justify-content: center;">
-                                    <span>❤️${cell.hp || '-'}</span>
-                                    ${cell.power ? `<span>🛡️${cell.power}</span>` : ''}
-                                    ${cell.garrison && (cell.type === 'Kışla' || cell.type === 'Saray') ? `<span>👥${cell.garrison.length}</span>` : ''}
-                                </div>
-                            ` : `
-                                <div style="font-size: 1.5rem; color: #4b5563;">□</div>
-                                <div style="font-size: 0.65rem; color: #6b7280;">Boş</div>
-                            `}
+        let modal = document.getElementById('vassal-grid-modal');
+        if (modal) modal.remove();
+        modal = document.createElement('div');
+        modal.id = 'vassal-grid-modal';
+        modal.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:flex;justify-content:center;align-items:center;z-index:10000;backdrop-filter:blur(5px);`;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+        const gridHtml = vassal.grid.map((cell, idx) => {
+            const isSaray = cell?.type === 'Saray';
+            const isOwned = cell?.ownerId === master.id;
+            const isEmpty = !cell && idx > 0;
+            const canBuild = hasBuildingSelected && isEmpty;
+            const canDemolish = isDemolishMode && cell && !isSaray && isOwned;
+
+            let borderColor = '#374151';
+            if (isSaray) borderColor = '#fbbf24';
+            else if (isOwned) borderColor = master.color;
+            else if (cell) borderColor = '#6b7280';
+            if (canBuild) borderColor = '#22c55e';
+            if (canDemolish) borderColor = '#ef4444';
+
+            return `
+                <div class="vl-cell ${canBuild ? 'vl-can-build' : ''} ${canDemolish ? 'vl-can-demolish' : ''}"
+                     data-idx="${idx}"
+                     style="background:${cell ? (isOwned ? `${master.color}22` : 'rgba(59,130,246,0.1)') : 'rgba(0,0,0,0.3)'};
+                            border:2px solid ${borderColor};border-radius:8px;padding:10px;text-align:center;
+                            min-height:72px;display:flex;flex-direction:column;justify-content:center;align-items:center;
+                            cursor:${canBuild || canDemolish ? 'pointer' : 'default'};
+                            ${isSaray ? 'box-shadow:0 0 15px rgba(251,191,36,0.3);' : ''}
+                            ${isOwned ? `box-shadow:0 0 8px ${master.color}55;` : ''}">
+                    ${cell ? `
+                        <div style="font-size:1.4rem">${this.getBuildingIcon(cell.type)}</div>
+                        <div style="font-size:0.7rem;font-weight:600;color:#e5e7eb;margin:2px 0">${cell.type}</div>
+                        <div style="font-size:0.65rem;color:#9ca3af;display:flex;gap:4px;justify-content:center">
+                            <span>❤️${cell.hp||'-'}</span>
+                            ${cell.power ? `<span>🛡️${cell.power}</span>` : ''}
+                            ${cell.garrison && (cell.type==='Kışla'||cell.type==='Saray') ? `<span>👥${cell.garrison.length}</span>` : ''}
                         </div>
-                    `).join('')}
+                        ${isOwned ? `<div style="font-size:0.6rem;color:${master.color};margin-top:2px">👑 ${master.name}</div>` : ''}
+                        ${canDemolish ? `<div style="font-size:0.65rem;color:#ef4444;margin-top:2px">🔨 Yık</div>` : ''}
+                    ` : `
+                        <div style="font-size:1.2rem;color:${canBuild ? '#22c55e' : '#4b5563'}">${canBuild ? '＋' : '□'}</div>
+                        <div style="font-size:0.6rem;color:${canBuild ? '#22c55e' : '#6b7280'}">${canBuild ? 'İnşa Et' : 'Boş'}</div>
+                    `}
                 </div>
-                <div style="margin-top: 20px; padding: 12px; background: rgba(220, 38, 38, 0.2); border: 1px solid #dc2626; border-radius: 6px; text-align: center; color: #fca5a5; font-size: 0.85rem;">
-                    ℹ️ Bu krallık senin vasalın. Geliri otomatik olarak sana aktarılıyor.
+            `;
+        }).join('');
+
+        modal.innerHTML = `
+            <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:24px;border-radius:16px;max-width:560px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,0.5);border:2px solid ${vassal.color};">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                    <h2 style="margin:0;color:${vassal.color};font-size:1.3rem;text-shadow:0 0 10px ${vassal.color};">⛓️ ${vassal.name}</h2>
+                    <button id="close-vassal-modal" style="background:#dc2626;color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:600;">✕</button>
                 </div>
+                <div style="display:flex;gap:16px;font-size:0.85rem;margin-bottom:14px;padding:10px;background:rgba(0,0,0,0.3);border-radius:8px;">
+                    <span style="color:#fbbf24">💰 ${vassal.gold}</span>
+                    <span style="color:#a78bfa">🎯 ${vassal.dp} DP</span>
+                    <span style="color:${master.color}">👑 Efendi: ${master.name}</span>
+                </div>
+                ${hint ? `<div style="padding:8px 12px;background:rgba(212,175,55,0.15);border:1px solid #d4af3760;border-radius:6px;color:#d4af37;font-size:0.8rem;margin-bottom:12px;">${hint}</div>` : ''}
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">${gridHtml}</div>
             </div>
         `;
 
         modal.style.display = 'flex';
-        const closeBtn = document.getElementById('close-vassal-modal');
-        if (closeBtn) closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+        document.getElementById('close-vassal-modal').addEventListener('click', () => modal.remove());
+
+        if (interactive && isMaster) {
+            modal.querySelectorAll('.vl-cell').forEach(cell => {
+                const idx = parseInt(cell.dataset.idx);
+                cell.addEventListener('click', () => {
+                    if (cell.classList.contains('vl-can-build')) {
+                        const result = this.game.buildOnVassalLand(vassalId, idx);
+                        if (result.success === false) alert(result.msg);
+                        else { modal.remove(); this.render(); }
+                    } else if (cell.classList.contains('vl-can-demolish')) {
+                        const result = this.game.demolishOnVassalLand(vassalId, idx);
+                        if (result.success === false) alert(result.msg);
+                        else { modal.remove(); this.render(); }
+                    }
+                });
+            });
+        }
     },
 
     showJokerModal(handIndex, availableTechs) {

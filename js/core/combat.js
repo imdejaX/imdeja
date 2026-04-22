@@ -17,6 +17,19 @@ export const CombatMixin = {
         if (attacker.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
         if (attacker.id === defender.id) return { success: false, msg: "Kendine saldıramazsın!" };
 
+        // İttifak dayanışma zorunluluğu
+        if (attacker.mustRetaliateAgainst !== null && attacker.mustRetaliateAgainst !== undefined) {
+            const obligationTarget = this.players.find(p => p.id === attacker.mustRetaliateAgainst);
+            if (obligationTarget && !obligationTarget.isVassal) {
+                if (defender.id !== attacker.mustRetaliateAgainst) {
+                    return { success: false, msg: `⚔️ İttifak dayanışması! Müttefike saldıran ${obligationTarget.name}'e önce saldırmalısın!` };
+                }
+            } else {
+                // Hedef vassal olduysa veya yok olduysa zorunluluk düşer
+                attacker.mustRetaliateAgainst = null;
+            }
+        }
+
         if (this.turn <= 3) {
             return { success: false, msg: `🏳️ İlk 3 tur barış dönemi! Saldırı yapılamaz. (Tur: ${this.turn}/3)` };
         }
@@ -51,27 +64,32 @@ export const CombatMixin = {
             return { success: false, msg: "Vasalını korumalısın, saldıramazsın!" };
         }
 
-        if (defender.isVassal && defender.masterId !== attacker.id) {
-            const master = this.players.find(p => p.id === defender.masterId);
-            if (master) {
-                const validTargets = master.grid
-                    .map((cell, idx) => ({ cell, idx }))
-                    .filter(item => item.cell && !item.cell.isUnit);
-
-                if (validTargets.length === 0) {
-                    return { success: false, msg: `${defender.name} efendisi ${master.name} tarafından korunuyor, ama hedef bulunamadı!` };
-                }
-
-                const nonSaray = validTargets.filter(t => t.cell.type !== 'Saray');
-                const targetList = nonSaray.length > 0 ? nonSaray : validTargets;
-                const selectedTarget = targetList[Math.floor(Math.random() * targetList.length)];
-
-                this.log(`⛓️ ${defender.name} bir vassal! Saldırı efendisi ${master.name}'e yönlendirildi!`);
-                return this.initiateAttack(master.id, selectedTarget.idx);
-            }
-        }
-
         const targetCell = defender.grid[targetSlotIndex];
+
+        if (defender.isVassal && defender.masterId !== attacker.id) {
+            // Sadece Saray korumalı — efendiye yönlendir
+            // Master-owned binalar saldırılabilir
+            if (!targetCell || targetCell.type === 'Saray') {
+                const master = this.players.find(p => p.id === defender.masterId);
+                if (master) {
+                    const validTargets = master.grid
+                        .map((cell, idx) => ({ cell, idx }))
+                        .filter(item => item.cell && !item.cell.isUnit);
+
+                    if (validTargets.length === 0) {
+                        return { success: false, msg: `${defender.name} Sarayı korumalı, efendisi ${master.name}'de saldırılacak bina bulunamadı!` };
+                    }
+
+                    const nonSaray = validTargets.filter(t => t.cell.type !== 'Saray');
+                    const targetList = nonSaray.length > 0 ? nonSaray : validTargets;
+                    const selectedTarget = targetList[Math.floor(Math.random() * targetList.length)];
+
+                    this.log(`⛓️ ${defender.name} Sarayı korumalı! Saldırı efendisi ${master.name}'e yönlendirildi!`);
+                    return this.initiateAttack(master.id, selectedTarget.idx, confirmed);
+                }
+            }
+            // Master-owned bina hedeflendiyse normal devam et
+        }
         if (!targetCell) return { success: false, msg: "Boş alana saldırılmaz." };
 
         this.lastDiceRoll = null;
@@ -162,9 +180,6 @@ export const CombatMixin = {
                 defender.attackedBy.push(attackInfo);
             }
 
-            const totalMilitaryPower = attackerMilitary;
-            const maxAttackPower = Math.ceil(totalMilitaryPower * 0.25);
-
             let attackRoll, defenseRoll;
             if (this.lastDiceRoll) {
                 attackRoll = this.lastDiceRoll.attacker;
@@ -183,67 +198,60 @@ export const CombatMixin = {
 
             const targetCell = defender.grid[targetSlotIndex];
             const defenderMilitary = this.calculateMilitary(defender);
-            const defenderMilitaryBonus = Math.ceil(defenderMilitary * 0.20);
 
-            const militaryTech = attacker.technologies.military;
-            const militaryMultipliers = [1, 1.2, 1.5, 2, 2.5];
-            const techBoostedAttack = Math.floor(maxAttackPower * militaryMultipliers[militaryTech]);
-
+            // Savunma: bina gücü üzerine savunma teknolojisi uygulanır
             const defenseTech = defender.technologies.defense;
             const defenseMultipliers = [1, 1.2, 1.5, 2, 2.5];
-            let techBoostedDefense = Math.floor((targetCell.power || 0) * defenseMultipliers[defenseTech]);
+            const techBoostedBuilding = Math.floor((targetCell.power || 0) * defenseMultipliers[defenseTech]);
 
-            // Duvar'ın kendisi hedef alındığında kendi bonusunu sayma
+            // Duvar bonusu — sadece Duvar hedef değilse
             const hasWall = defender.grid.some((c, i) => c && c.type === 'Duvar' && i !== targetSlotIndex);
             const wallBonus = hasWall ? 5 : 0;
-            techBoostedDefense += wallBonus;
 
-            const attackPower = techBoostedAttack + attackRoll + militaryBonus;
-            const defensePower = techBoostedDefense + defenderMilitaryBonus + defenseRoll;
-
-            // Diversity bonus check
+            // Çeşitlilik bonusu (saldırgan)
             const soldierTypes = new Set();
             let hasBarracksForBonus = false;
             attacker.grid.forEach(cell => {
                 if (cell && cell.isUnit && cell.name) soldierTypes.add(cell.name);
-                if (cell && cell.type === 'Kışla') hasBarracksForBonus = true;
+                if (cell && cell.type === 'Kışla') {
+                    hasBarracksForBonus = true;
+                    if (cell.garrison) cell.garrison.forEach(s => { if (s.name) soldierTypes.add(s.name); });
+                }
             });
             const hasDiversityBonus = soldierTypes.has('Piyade') &&
                 soldierTypes.has('Okçu') &&
                 soldierTypes.has('Süvari') &&
                 hasBarracksForBonus;
 
+            // Tam askeri güç — calculateMilitary zaten teknoloji çarpanını içeriyor
+            const finalAttackMilitary = hasDiversityBonus ? Math.floor(attackerMilitary * 1.2) : attackerMilitary;
+            const attackPower = finalAttackMilitary + attackRoll + militaryBonus;
+            const defensePower = defenderMilitary + techBoostedBuilding + wallBonus + defenseRoll;
+
             // Combat data for display
             const attackerBaseCalc = [
-                { text: `⚔️ Askeri Güç (%25): ${maxAttackPower}`, color: '#a8dadc' }
+                { text: `⚔️ Askeri Güç: ${attackerMilitary}`, color: '#a8dadc' }
             ];
-            if (militaryTech > 0) {
-                attackerBaseCalc.push({
-                    text: `🔬 Silah Teknolojisi Lv${militaryTech} (×${militaryMultipliers[militaryTech]}): +${techBoostedAttack - maxAttackPower}`,
-                    color: '#4ecdc4'
-                });
+            if (hasDiversityBonus) {
+                attackerBaseCalc.push({ text: `🎖️ Çeşitlilik Bonusu (+20%): +${finalAttackMilitary - attackerMilitary}`, color: '#10b981' });
             }
             if (militaryBonus > 0) {
                 attackerBaseCalc.push({ text: `✨ Askeri Gösteri Bonusu: +${militaryBonus}`, color: '#fbbf24' });
             }
-            if (hasDiversityBonus) {
-                attackerBaseCalc.push({ text: `🎖️ Çeşitlilik Bonusu: +20%`, color: '#10b981' });
-            }
 
             const defenderBaseCalc = [
+                { text: `⚔️ Askeri Güç: ${defenderMilitary}`, color: '#a8dadc' },
                 { text: `🏰 Bina Savunması: ${targetCell.power || 0}`, color: '#a8dadc' }
             ];
             if (defenseTech > 0) {
-                const rawTechVal = Math.floor((targetCell.power || 0) * defenseMultipliers[defenseTech]);
                 defenderBaseCalc.push({
-                    text: `🛡️ Savunma Teknolojisi Lv${defenseTech} (×${defenseMultipliers[defenseTech]}): +${rawTechVal - (targetCell.power || 0)}`,
+                    text: `🛡️ Savunma Teknolojisi Lv${defenseTech} (×${defenseMultipliers[defenseTech]}): +${techBoostedBuilding - (targetCell.power || 0)}`,
                     color: '#4ecdc4'
                 });
             }
             if (hasWall) {
                 defenderBaseCalc.push({ text: `🧱 Duvar Bonusu: +5`, color: '#fbbf24' });
             }
-            defenderBaseCalc.push({ text: `⚔️ Askeri Bonus (%20): ${defenderMilitaryBonus}`, color: '#a8dadc' });
 
             const combatSuccess = attackPower > defensePower;
             const damageDealt = combatSuccess ? (attackPower - defensePower) : 0;
@@ -274,10 +282,9 @@ export const CombatMixin = {
 
             this.log(`⚔️ ZAR ATILDI! ${attacker.name} -> ${defender.name}`);
             if (hasDiversityBonus) this.log(`🎖️ Çeşitlilik Bonusu: +20% (Piyade, Okçu, Süvari, Kışla)`);
-            if (militaryTech > 0) this.log(`🔬 Silah Teknolojisi Lv${militaryTech}: ×${militaryMultipliers[militaryTech]}`);
             if (defenseTech > 0) this.log(`🛡️ Savunma Teknolojisi Lv${defenseTech}: ×${defenseMultipliers[defenseTech]}`);
-            this.log(`Saldırı: ${attackPower} (Askeri %25: ${maxAttackPower}, Tek Bonus: ${techBoostedAttack - maxAttackPower}, Zar: ${attackRoll})`);
-            this.log(`Savunma: ${defensePower} (Bina: ${targetCell.power || 0}, Tek Bonus: ${techBoostedDefense - (targetCell.power || 0)}, Askeri %20: ${defenderMilitaryBonus}, Zar: ${defenseRoll})`);
+            this.log(`Saldırı: ${attackPower} (Askeri: ${finalAttackMilitary}, Zar: ${attackRoll}${militaryBonus > 0 ? `, Bonus: ${militaryBonus}` : ''})`);
+            this.log(`Savunma: ${defensePower} (Askeri: ${defenderMilitary}, Bina: ${techBoostedBuilding}${wallBonus > 0 ? `, Duvar: +${wallBonus}` : ''}, Zar: ${defenseRoll})`);
 
             const powerDiff = Math.abs(attackPower - defensePower);
 
@@ -286,13 +293,19 @@ export const CombatMixin = {
                 let damage = 0;
                 if (diff <= 5) {
                     damage = 1;
-                    this.log(`📉 KISMİ HASAR: Yakın mücadele! Sadece 1 hasar verildi.`);
+                    this.log(`📉 KISMİ HASAR: Yakın mücadele! 1 hasar verildi.`);
                 } else if (diff <= 15) {
                     damage = 2;
                     this.log(`💥 CİDDİ HASAR: Üstün saldırı! 2 hasar verildi.`);
+                } else if (diff <= 30) {
+                    damage = 3;
+                    this.log(`💥 AĞIR HASAR! Belirgin üstünlük! 3 hasar verildi.`);
+                } else if (diff <= 50) {
+                    damage = 4;
+                    this.log(`🔥 ÇÖKÜŞ YAKLAŞIYOR! Ezici güç! 4 hasar verildi.`);
                 } else {
-                    damage = diff;
-                    this.log(`🔥 YIKICI SALDIRI! Fark çok büyük! ${damage} hasar verildi.`);
+                    damage = 5;
+                    this.log(`🔥 YIKICI SALDIRI! Karşı konulamaz güç! 5 hasar verildi.`);
                 }
 
                 targetCell.hp -= damage;
@@ -396,6 +409,19 @@ export const CombatMixin = {
                     critical: damageDealt > 10,
                     targetType: targetCell?.type
                 });
+            }
+
+            // İttifak dayanışması — müttefike bildir
+            if (defender.allianceWith !== null) {
+                const ally = this.players.find(p => p.id === defender.allianceWith);
+                if (ally && !ally.isVassal && ally.id !== attacker.id) {
+                    ally.mustRetaliateAgainst = attacker.id;
+                    this.log(`🤝 Dayanışma! ${ally.name}, müttefiki ${defender.name}'e saldıran ${attacker.name}'e misilleme yapmalı!`);
+                }
+            }
+            // Saldırgan kendi dayanışma yükümlülüğünü yerine getirdiyse temizle
+            if (attacker.mustRetaliateAgainst === defender.id) {
+                attacker.mustRetaliateAgainst = null;
             }
 
             this.pendingAttack = null;
@@ -506,9 +532,26 @@ export const CombatMixin = {
     },
 
     makeVassal(vassal, master) {
+        // Vassal'ın mevcut vassalları yeni master'a devredilir
+        this.players.forEach(p => {
+            if (p.masterId === vassal.id) {
+                p.masterId = master.id;
+                this.log(`⛓️ ${p.name}, yeni efendi ${master.name}'e devredildi.`);
+            }
+        });
+
+        // Izgara temizlenir — sadece Saray kalır
+        const oldSaray = vassal.grid[0];
+        vassal.grid = Array(13).fill(null);
+        vassal.grid[0] = {
+            type: 'Saray', hp: 2, power: 10,
+            garrison: oldSaray?.garrison || []
+        };
+
         vassal.isVassal = true;
         vassal.masterId = master.id;
-        vassal.grid[0] = { type: 'Saray', hp: 2 };
+        vassal.allianceWith = null;
+        vassal.mustRetaliateAgainst = null;
         this.log(`👑 ${vassal.name}, ${master.name} KRALLIĞINA BOYUN EĞDİ!`);
         this.checkWinCondition();
     },
@@ -650,6 +693,19 @@ export const CombatMixin = {
                 basePower += cell.garrison.reduce((gSum, s) => gSum + (s.power || 0), 0);
             }
         });
+
+        // Master'a ait vassal topraklarındaki Kışla garrison'ları da sayılır
+        if (this.players) {
+            this.players.forEach(v => {
+                if (v.isVassal && v.masterId === player.id) {
+                    v.grid.forEach(cell => {
+                        if (cell && cell.type === 'Kışla' && cell.ownerId === player.id && cell.garrison) {
+                            basePower += cell.garrison.reduce((s, u) => s + (u.power || 0), 0);
+                        }
+                    });
+                }
+            });
+        }
 
         const soldierTypes = new Set();
         let hasBarracks = false;

@@ -504,6 +504,20 @@ html, body {
   padding: 2px 6px;
   margin-top: 4px;
 }
+.pc-retaliate-badge {
+  font-size: 0.65rem;
+  color: #fbbf24;
+  background: rgba(239,68,68,0.2);
+  border: 1px solid #ef4444;
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-top: 4px;
+  animation: retaliPulse 1.2s ease-in-out infinite;
+}
+@keyframes retaliPulse {
+  0%,100% { box-shadow: 0 0 4px rgba(239,68,68,0.4); }
+  50%      { box-shadow: 0 0 10px rgba(239,68,68,0.8); }
+}
 
 .pc-badge.peace {
   background: rgba(255,255,255,0.1);
@@ -530,93 +544,66 @@ html, body {
   height: 100%;
 }
 
-/* ---- TERRITORY SVG PATHS ---- */
+/* ---- TERRITORY ---- */
 .territory {
   cursor: pointer;
   transition: filter 0.2s, opacity 0.2s;
 }
 
-.territory:hover .territory-shape {
-  filter: brightness(1.3);
-}
-
+/* Tıklama alanı (şeffaf daire) */
 .territory-shape {
-  transition: fill 0.4s ease, stroke-width 0.2s, filter 0.2s;
-  stroke-width: 2;
-  stroke: rgba(0,0,0,0.5);
+  transition: filter 0.2s;
 }
 
+/* Seçili bölge */
 .territory.selected .territory-shape {
-  stroke: white;
-  stroke-width: 3;
-  filter: brightness(1.4) drop-shadow(0 0 8px white);
+  filter: drop-shadow(0 0 10px white);
 }
 
+/* Saldırı hedefi */
 .territory.attack-target .territory-shape {
-  stroke: #ef4444;
-  stroke-width: 3;
   animation: targetPulse 0.8s ease-in-out infinite alternate;
-}
-
-.territory.attack-source .territory-shape {
-  stroke: #fbbf24;
-  stroke-width: 3;
 }
 
 @keyframes targetPulse {
   from { filter: brightness(1); }
-  to   { filter: brightness(1.5) drop-shadow(0 0 12px #ef4444); }
+  to   { filter: brightness(1.5) drop-shadow(0 0 14px #ef4444); }
 }
 
-/* Territory labels */
-.territory-label {
-  pointer-events: none;
-  font-family: var(--font-heading);
-  font-size: 11px;
-  fill: rgba(255,255,255,0.9);
-  text-anchor: middle;
-  dominant-baseline: middle;
-  text-shadow: 0 1px 3px black;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
+/* Saldırı animasyon glowu */
+.attack-target-pulse {
+  animation: attackGlow 0.7s ease-in-out infinite alternate;
 }
 
-.territory-army {
-  pointer-events: none;
+@keyframes attackGlow {
+  from { opacity: 0.7; }
+  to   { opacity: 1; }
 }
 
-.territory-army-bg {
-  fill: rgba(0,0,0,0.7);
-  rx: 8;
+/* Hasar / iyileşme flash — <g> grubuna uygulanır */
+.territory.flash-damage {
+  animation: flashDamage 0.6s ease-out forwards;
+}
+@keyframes flashDamage {
+  0%   { filter: drop-shadow(0 0 20px #ef4444); }
+  100% { filter: none; }
 }
 
-.territory-army-text {
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 700;
-  fill: white;
-  text-anchor: middle;
-  dominant-baseline: middle;
+.territory.flash-heal {
+  animation: flashHeal 0.6s ease-out forwards;
+}
+@keyframes flashHeal {
+  0%   { filter: drop-shadow(0 0 20px #10b981); }
+  100% { filter: none; }
 }
 
-.territory-icon {
-  font-size: 14px;
-  text-anchor: middle;
-  dominant-baseline: middle;
-  pointer-events: none;
-}
+/* Ordu sayacı */
+.territory-army { pointer-events: none; }
 
 /* HP Bar */
-.territory-hp-bar-bg {
-  fill: rgba(0,0,0,0.5);
-  rx: 3;
-}
 .territory-hp-bar-fill {
-  fill: #10b981;
-  rx: 3;
   transition: width 0.4s ease;
 }
-.territory-hp-bar-fill.hp-mid { fill: #f59e0b; }
-.territory-hp-bar-fill.hp-low { fill: #ef4444; }
 
 /* ---- ATTACK ANIMATION ---- */
 .attack-path {

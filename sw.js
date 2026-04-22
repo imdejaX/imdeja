@@ -1,7 +1,8 @@
-const CACHE = 'kral-v18';
+const CACHE = 'kral-v31';
 const ASSETS = [
   '/', '/menu.html', '/game.html',
   '/map.css', '/menu-style.css',
+  '/harita.png',
   '/js/main.js',
   '/js/core/game.js', '/js/core/renderer.js', '/js/core/mapRenderer.js',
   '/js/core/modalRenderer.js', '/js/core/attackAnimator.js',
