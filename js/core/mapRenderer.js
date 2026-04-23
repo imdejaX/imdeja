@@ -52,7 +52,7 @@ export class MapRenderer {
 
         // Harita arka planı
         const mapImg = this._el('image');
-        mapImg.setAttribute('href', '/harita.png');
+        mapImg.setAttribute('href', 'harita.png');
         mapImg.setAttribute('x', '30');
         mapImg.setAttribute('y', '18');
         mapImg.setAttribute('width', '940');
