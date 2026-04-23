@@ -11,14 +11,14 @@ export class MapRenderer {
 
         // 8 bölge — merkez koordinatları (cx, cy) harita.png üzerinde
         this.territories = [
-            { id: 0, name: 'Aslan Krallığı',    cx: 230, cy: 168 },
-            { id: 1, name: 'Karahan Krallığı',  cx: 168, cy: 345 },
-            { id: 2, name: 'Demiryvurt Krallığı', cx: 445, cy: 300 },
-            { id: 3, name: 'Günbatar Krallığı', cx: 688, cy: 195 },
-            { id: 4, name: 'Yeşildere Krallığı', cx: 808, cy: 378 },
-            { id: 5, name: 'Aktaş Krallığı',    cx: 152, cy: 498 },
-            { id: 6, name: 'Gölkent Krallığı',  cx: 430, cy: 510 },
-            { id: 7, name: 'Kumsaray Krallığı', cx: 762, cy: 520 }
+            { id: 0, cx: 314, cy: 136 },
+            { id: 1, cx: 491, cy: 263 },
+            { id: 2, cx: 296, cy: 413 },
+            { id: 3, cx: 631, cy: 152 },
+            { id: 4, cx: 666, cy: 303 },
+            { id: 5, cx: 265, cy: 282 },
+            { id: 6, cx: 466, cy: 464 },
+            { id: 7, cx: 707, cy: 440 }
         ];
 
         // Komşuluk (saldırı / erişim kontrolü için)

@@ -561,7 +561,7 @@ html, body {
 }
 
 /* Saldırı hedefi */
-.territory.attack-target .territory-shape {
+.territory-shape.attack-target {
   animation: targetPulse 0.8s ease-in-out infinite alternate;
 }
 

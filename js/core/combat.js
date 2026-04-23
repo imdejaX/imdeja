@@ -16,6 +16,7 @@ export const CombatMixin = {
 
         if (attacker.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
         if (attacker.id === defender.id) return { success: false, msg: "Kendine saldıramazsın!" };
+        if (attacker.isVassal) return { success: false, msg: "Vasallar saldırı yapamaz! Önce bağımsızlığını ilan et." };
 
         // İttifak dayanışma zorunluluğu
         if (attacker.mustRetaliateAgainst !== null && attacker.mustRetaliateAgainst !== undefined) {
@@ -191,9 +192,13 @@ export const CombatMixin = {
             }
 
             const militaryBonus = attacker.militaryBoost || 0;
+            const weaponBonus = attacker.weaponBonus || 0;
             if (militaryBonus > 0) {
                 this.log(`✨ Askeri Gösteri bonusu: +${militaryBonus}`);
                 attacker.militaryBoost = 0;
+            }
+            if (weaponBonus > 0) {
+                this.log(`⚒️ Silah Atölyesi bonusu: +${weaponBonus}`);
             }
 
             const targetCell = defender.grid[targetSlotIndex];
@@ -225,7 +230,7 @@ export const CombatMixin = {
 
             // Tam askeri güç — calculateMilitary zaten teknoloji çarpanını içeriyor
             const finalAttackMilitary = hasDiversityBonus ? Math.floor(attackerMilitary * 1.2) : attackerMilitary;
-            const attackPower = finalAttackMilitary + attackRoll + militaryBonus;
+            const attackPower = finalAttackMilitary + attackRoll + militaryBonus + weaponBonus;
             const defensePower = defenderMilitary + techBoostedBuilding + wallBonus + defenseRoll;
 
             // Combat data for display
@@ -237,6 +242,9 @@ export const CombatMixin = {
             }
             if (militaryBonus > 0) {
                 attackerBaseCalc.push({ text: `✨ Askeri Gösteri Bonusu: +${militaryBonus}`, color: '#fbbf24' });
+            }
+            if (weaponBonus > 0) {
+                attackerBaseCalc.push({ text: `⚒️ Silah Atölyesi Bonusu: +${weaponBonus}`, color: '#f59e0b' });
             }
 
             const defenderBaseCalc = [
@@ -283,10 +291,16 @@ export const CombatMixin = {
             this.log(`⚔️ ZAR ATILDI! ${attacker.name} -> ${defender.name}`);
             if (hasDiversityBonus) this.log(`🎖️ Çeşitlilik Bonusu: +20% (Piyade, Okçu, Süvari, Kışla)`);
             if (defenseTech > 0) this.log(`🛡️ Savunma Teknolojisi Lv${defenseTech}: ×${defenseMultipliers[defenseTech]}`);
-            this.log(`Saldırı: ${attackPower} (Askeri: ${finalAttackMilitary}, Zar: ${attackRoll}${militaryBonus > 0 ? `, Bonus: ${militaryBonus}` : ''})`);
+            this.log(`Saldırı: ${attackPower} (Askeri: ${finalAttackMilitary}, Zar: ${attackRoll}${militaryBonus > 0 ? `, Gösteri: +${militaryBonus}` : ''}${weaponBonus > 0 ? `, Atölye: +${weaponBonus}` : ''})`);
             this.log(`Savunma: ${defensePower} (Askeri: ${defenderMilitary}, Bina: ${techBoostedBuilding}${wallBonus > 0 ? `, Duvar: +${wallBonus}` : ''}, Zar: ${defenseRoll})`);
 
             const powerDiff = Math.abs(attackPower - defensePower);
+
+            // Savaş gideri — her saldırı maliyetli
+            if (attacker.gold > 0) {
+                attacker.gold -= 1;
+                this.log(`💸 ${attacker.name} savaş gideri: -1 Altın`);
+            }
 
             if (attackPower > defensePower) {
                 const diff = attackPower - defensePower;
@@ -378,12 +392,16 @@ export const CombatMixin = {
                         if (destroyedBuildingName === 'Kışla' && destroyedGarrison.length > 0) {
                             this.handleBarracksDestruction(attacker, defender, destroyedGarrison);
                         }
-                        attacker.gold += 1;
-                        attacker.totalGoldEarned += 1;
-                        this.log(`💰 ${attacker.name} yıkımdan 1 Altın kazandı!`);
+                        attacker.gold += 2;
+                        attacker.totalGoldEarned += 2;
+                        this.log(`💰 ${attacker.name} yıkımdan 2 Altın kazandı!`);
                     }
                 } else {
                     this.log(`🛡️ ${defender.name}, ${targetCell.type} hasar aldı. Kalan HP: ${targetCell.hp}`);
+                    if (defender.gold > 0) {
+                        defender.gold -= 1;
+                        this.log(`💸 ${defender.name} acil onarım: -1 Altın`);
+                    }
                 }
 
                 // Muharebe kayıpları — saldırgan kazandı
@@ -392,7 +410,7 @@ export const CombatMixin = {
             } else {
                 if (attacker.gold > 0) {
                     attacker.gold -= 1;
-                    this.log(`💸 ${attacker.name} başarısız saldırı sonucu 1 Altın kaybetti!`);
+                    this.log(`💸 ${attacker.name} başarısız saldırı cezası: -1 Altın`);
                 }
                 this.lastAttackResult = { success: false, targetType: targetCell.type };
 
@@ -552,6 +570,8 @@ export const CombatMixin = {
         vassal.masterId = master.id;
         vassal.allianceWith = null;
         vassal.mustRetaliateAgainst = null;
+        vassal.unrest = 0;
+        vassal.weaponBonus = 0;
         this.log(`👑 ${vassal.name}, ${master.name} KRALLIĞINA BOYUN EĞDİ!`);
         this.checkWinCondition();
     },
@@ -632,14 +652,16 @@ export const CombatMixin = {
      * Yakın savaşta kazanan da kayıp verir.
      */
     _applyBattleCasualties(attacker, defender, attackerWon, powerDiff) {
-        // Kaybeden taraf: farka göre 1-5 asker
-        const loserLosses = powerDiff <= 5  ? 1
-                          : powerDiff <= 15 ? 2
-                          : powerDiff <= 30 ? 3
-                          : Math.min(5, Math.floor(powerDiff / 10));
+        // Kaybeden taraf: farka göre 2-10 asker
+        const loserLosses = powerDiff <= 5  ? 2
+                          : powerDiff <= 15 ? 4
+                          : powerDiff <= 30 ? 6
+                          : Math.min(10, Math.floor(powerDiff / 5));
 
-        // Kazanan taraf: sadece yakın savaşta (≤5 fark) 1 kayıp verir
-        const winnerLosses = powerDiff <= 5 ? 1 : 0;
+        // Kazanan taraf: ezici zafer dışında kayıp verir
+        const winnerLosses = powerDiff <= 5  ? 2
+                           : powerDiff <= 30 ? 1
+                           : 0;
 
         const loser  = attackerWon ? defender : attacker;
         const winner = attackerWon ? attacker : defender;
@@ -660,12 +682,15 @@ export const CombatMixin = {
         let removed = 0;
         for (const cell of player.grid) {
             if (!cell || cell.type !== 'Kışla' || !cell.garrison || cell.garrison.length === 0) continue;
-            // En düşük güçlü askerler önce kayıp verir
             cell.garrison.sort((a, b) => (a.power || 0) - (b.power || 0));
             const toRemove = Math.min(count - removed, cell.garrison.length);
             cell.garrison.splice(0, toRemove);
             removed += toRemove;
             if (removed >= count) break;
+        }
+        // Her düşen asker silahını götürür
+        if (removed > 0 && player.weaponBonus > 0) {
+            player.weaponBonus = Math.max(0, player.weaponBonus - removed);
         }
         return removed;
     },

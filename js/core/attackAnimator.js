@@ -88,6 +88,8 @@ export class AttackAnimator {
             // path element'e link (href ile)
             const pathEl = document.createElementNS(ns, 'path');
             pathEl.setAttribute('d', pathD);
+            pathEl.setAttribute('fill', 'none');
+            pathEl.setAttribute('stroke', 'none');
             pathEl.id = `proj-path-${Date.now()}`;
             this.animLayer.appendChild(pathEl);
 

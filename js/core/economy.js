@@ -141,6 +141,13 @@ export const EconomyMixin = {
             }
         });
 
+        // 8.5. Silah Atölyesi — her tur birikimli saldırı bonusu
+        const workshops = p.grid.filter(c => c && c.type === 'Silah Atölyesi').length;
+        if (workshops > 0) {
+            p.weaponBonus = (p.weaponBonus || 0) + workshops;
+            this.log(`⚒️ ${p.name}, Silah Atölyesi'nden +${workshops} silah bonusu! (Toplam: ${p.weaponBonus})`);
+        }
+
         // 9. Farm civilian production (every 3 turns)
         const canGrowPop = this.turn % 3 === 0;
         const hasFarm = p.grid.some(c => c && c.type === 'Çiftlik');
@@ -191,8 +198,8 @@ export const EconomyMixin = {
             }
         }
 
-        // 11. Capacity check
-        this.checkCapacity(p);
+        // 11. Food balance & unrest check
+        this.checkFoodAndUnrest(p);
     },
 
     getTotalGold() {
@@ -205,52 +212,97 @@ export const EconomyMixin = {
         return 999;
     },
 
-    getCapacityInfo(player) {
-        const barracks = player.grid.filter(c => c && c.type === 'Kışla').length;
+    calculateFoodBalance(player) {
         const farms = player.grid.filter(c => c && c.type === 'Çiftlik').length;
-        // Base 10 + her kışla 20 + her çiftlik 5 — daha geniş başlangıç
-        let baseCapacity = 10 + (barracks * 20) + (farms * 5);
         const techMultipliers = [1, 1.5, 2.5, 4, 6];
-        const capacity = Math.floor(baseCapacity * techMultipliers[player.technologies.food]);
+        const production = Math.floor((5 + farms * 4) * techMultipliers[player.technologies.food]);
 
-        const armyCount = player.grid.filter(c => c && c.isUnit).length;
-        const basePop = player.pop > 0 ? player.pop : 3;
-        const garrisonSoldiers = player.grid.reduce((sum, c) => {
-            if (c && c.type === 'Kışla' && c.garrison) return sum + c.garrison.length;
-            return sum;
+        const consumption = player.grid.reduce((sum, c) => {
+            if (!c || c.type !== 'Kışla' || !c.garrison) return sum;
+            return sum + c.garrison.length;
         }, 0);
-        const totalPop = basePop + armyCount + garrisonSoldiers;
 
-        return { capacity, totalPop };
+        return { production, consumption, balance: production - consumption };
     },
 
-    checkCapacity(player) {
-        const { capacity, totalPop } = this.getCapacityInfo(player);
-        if (totalPop <= capacity) return;
+    getCapacityInfo(player) {
+        const { production, consumption } = this.calculateFoodBalance(player);
+        return { capacity: production, totalPop: consumption };
+    },
 
-        const excess = totalPop - capacity;
-        this.log(`🛑 ${player.name} GIDA KITLIĞI! Kapasite: ${capacity}, Nüfus: ${totalPop}`);
+    checkFoodAndUnrest(player) {
+        const { production, consumption, balance } = this.calculateFoodBalance(player);
 
-        let returned = 0;
-        for (let i = 0; i < player.grid.length; i++) {
-            if (returned >= excess) break;
-            if (player.grid[i] && player.grid[i].isUnit) {
-                const soldier = player.grid[i];
-                this.log(`🔄 Havuza döndü: ${soldier.type}`);
-                this.mercenaryPool.push({
-                    id: `merc-${Date.now()}-${i}`,
-                    name: soldier.type,
-                    cost: soldier.type === 'Piyade' ? 2 : soldier.type === 'Okçu' ? 3 : 4,
-                    type: 'Asker',
-                    power: soldier.power || (soldier.type === 'Piyade' ? 2 : soldier.type === 'Okçu' ? 3 : 4),
-                    isPoolSoldier: true
-                });
-                player.grid[i] = null;
-                returned++;
+        if (balance < 0) {
+            const deficit = Math.abs(balance);
+            player.unrest = (player.unrest || 0) + deficit;
+            this.log(`🍞 ${player.name} GIDA AÇIĞI! Üretim: ${production}, Tüketim: ${consumption} → Huzursuzluk: ${player.unrest}`);
+        } else if (balance > 0) {
+            const reduction = Math.floor(balance / 2);
+            if (reduction > 0 && (player.unrest || 0) > 0) {
+                player.unrest = Math.max(0, (player.unrest || 0) - reduction);
+                this.log(`🌾 ${player.name} gıda fazlası, huzursuzluk azaldı: ${player.unrest}`);
             }
         }
 
-        if (returned > 0) this.log(`♻️ ${returned} asker havuza eklendi. Pazarda satılacak.`);
+        const unrest = player.unrest || 0;
+
+        if (unrest >= 13) {
+            const candidates = player.grid
+                .map((c, i) => ({ c, i }))
+                .filter(({ c }) => c && c.type !== 'Saray' && !c.isUnit);
+
+            if (candidates.length > 0) {
+                const target = candidates[Math.floor(Math.random() * candidates.length)];
+                target.c.hp = Math.max(1, target.c.hp - 2);
+                this.log(`🔥 İÇ SAVAŞ! ${player.name}: ${target.c.type} hasar gördü! (-2 HP)`);
+            }
+            player.dp = Math.max(1, (player.dp || 1) - 2);
+            player.unrest = Math.max(0, player.unrest - 8);
+            this.log(`😱 ${player.name} isyanı bastırdı! -2 DP, Huzursuzluk: ${player.unrest}`);
+
+        } else if (unrest >= 8) {
+            const deserted = this._desertSoldiers(player, 2);
+            if (player.gold > 0) { player.gold -= 1; }
+            this.log(`😤 ${player.name} büyük şikayet! ${deserted} asker kaçtı, -1 Altın (Huzursuzluk: ${unrest})`);
+
+        } else if (unrest >= 4) {
+            const deserted = this._desertSoldiers(player, 1);
+            if (deserted > 0) {
+                this.log(`😠 ${player.name} halk şikayetleri! 1 asker kaçtı (Huzursuzluk: ${unrest})`);
+            }
+
+        } else if (unrest >= 1 && balance < 0) {
+            this.log(`⚠️ ${player.name} gıda sıkıntısı çekiyor (Huzursuzluk: ${unrest}/13)`);
+        }
+    },
+
+    _desertSoldiers(player, count) {
+        let removed = 0;
+        for (const cell of player.grid) {
+            if (!cell || cell.type !== 'Kışla' || !cell.garrison || cell.garrison.length === 0) continue;
+            const toRemove = Math.min(count - removed, cell.garrison.length);
+            for (let i = 0; i < toRemove; i++) {
+                const idx = Math.floor(Math.random() * cell.garrison.length);
+                const soldier = cell.garrison.splice(idx, 1)[0];
+                if (soldier) {
+                    this.mercenaryPool.push({
+                        id: `merc-${Date.now()}-${Math.random()}`,
+                        name: 'Paralı Asker (1)',
+                        count: 1, soldiers: [soldier], cost: 1,
+                        type: 'Asker', power: soldier.power || 2, isUnit: true,
+                        description: `${player.name}'dan kaçan asker.`
+                    });
+                    removed++;
+                }
+            }
+            if (removed >= count) break;
+        }
+        // Kaçan asker silahını da götürür
+        if (removed > 0 && player.weaponBonus > 0) {
+            player.weaponBonus = Math.max(0, player.weaponBonus - removed);
+        }
+        return removed;
     },
 
     playMercenaryCard(handIndex) {

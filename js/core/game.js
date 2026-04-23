@@ -23,8 +23,8 @@ export class Game {
             '#7c3aed', '#db2777', '#0891b2', '#65a30d'
         ];
         const defaultNames = [
-            'Kızıl Krallık', 'Mavi Krallık', 'Yeşil Krallık', 'Altın Krallık',
-            'Mor Hanedanlık', 'Pembe İmparatorluk', 'Camgöbeği Sultanlığı', 'Zeytin Konfederasyonu'
+            'Asgard', 'Olympos', 'Avalon', 'Valhalla',
+            'Camelot', 'Atlantis', 'Midgard', 'El Dorado'
         ];
 
         // Kullanıcının menüde girdiği özel isimler (varsa)
@@ -75,6 +75,8 @@ export class Game {
                 commerce: 0
             },
             militaryBoost: 0,
+            weaponBonus: 0,
+            unrest: 0,
             whiteFlagTurns: 0,
             marketRefreshes: 0,
             grid: Array(13).fill(null),
@@ -94,13 +96,15 @@ export class Game {
         for (let i = 0; i < baseAndCount * 1; i++) buildingCards.push({ name: 'Duvar', cost: 5, type: 'Bina', hp: 6, power: 20 });
         for (let i = 0; i < baseAndCount * 1; i++) buildingCards.push({ name: 'Pazar', cost: 3, type: 'Bina', hp: 3, power: 8 });
         for (let i = 0; i < baseAndCount * 1; i++) buildingCards.push({ name: 'Bilim Merkezi', cost: 5, type: 'Bina', hp: 4, power: 5 });
+        for (let i = 0; i < baseAndCount * 1; i++) buildingCards.push({ name: 'Silah Atölyesi', cost: 4, type: 'Bina', hp: 5, power: 10 });
 
         const extraBuildingTypes = [
             { name: 'Çiftlik', cost: 3, type: 'Bina', hp: 5, power: 8 },
             { name: 'Kışla', cost: 4, type: 'Bina', hp: 6, power: 12 },
             { name: 'Duvar', cost: 5, type: 'Bina', hp: 6, power: 20 },
             { name: 'Pazar', cost: 3, type: 'Bina', hp: 3, power: 8 },
-            { name: 'Bilim Merkezi', cost: 5, type: 'Bina', hp: 4, power: 5 }
+            { name: 'Bilim Merkezi', cost: 5, type: 'Bina', hp: 4, power: 5 },
+            { name: 'Silah Atölyesi', cost: 4, type: 'Bina', hp: 5, power: 10 }
         ];
         for (let i = 0; i < playerCount * 4; i++) {
             buildingCards.push(extraBuildingTypes[Math.floor(Math.random() * extraBuildingTypes.length)]);
@@ -135,6 +139,10 @@ export class Game {
             { name: 'Ticaret', cost: 10, popCost: 3, type: 'Teknoloji', techType: 'commerce', level: 2, multiplier: 2 },
             { name: 'Ticaret', cost: 15, popCost: 4, type: 'Teknoloji', techType: 'commerce', level: 3, multiplier: 2.5 },
             { name: 'Ticaret', cost: 25, popCost: 5, type: 'Teknoloji', techType: 'commerce', level: 4, multiplier: 3 },
+            { name: 'Tarım', cost: 4,  popCost: 1, type: 'Teknoloji', techType: 'food', level: 1, multiplier: 1.5 },
+            { name: 'Tarım', cost: 8,  popCost: 2, type: 'Teknoloji', techType: 'food', level: 2, multiplier: 2.5 },
+            { name: 'Tarım', cost: 14, popCost: 3, type: 'Teknoloji', techType: 'food', level: 3, multiplier: 4   },
+            { name: 'Tarım', cost: 22, popCost: 4, type: 'Teknoloji', techType: 'food', level: 4, multiplier: 6   },
             { name: 'Joker', cost: 10, popCost: 2, type: 'Teknoloji', techType: 'joker', level: 0, isJoker: true }
         ];
 
@@ -264,7 +272,7 @@ export class Game {
                     { name: 'Sivil', type: 'Nüfus', power: 0 }
                 ]
             };
-            p.grid[1] = { type: 'Çiftlik', hp: 5, power: 4 };
+            p.grid[1] = { type: 'Çiftlik', hp: 5, power: 8 };
 
             const startingSoldiers = [];
             const soldierTypes = [
@@ -301,26 +309,41 @@ export class Game {
 
     showGameTip() {
         const tips = [
-            "💡 Askeri gücünü artır ve rakibi alt etmeyi dene",
-            "💡 Altın kaynaklarını doğru kartlara kullan",
-            "💡 Çiftlik ile gelirini artır, daha fazla altın kazan",
-            "💡 Kışla her tur otomatik asker üretir",
-            "💡 Duvar tüm saldırıları karşılar, önce Duvar'ı yıkmalısın",
-            "💡 Pazar her tur +2 altın geliri sağlar",
-            "💡 Piyade + Okçu + Süvari + Kışla ile %20 saldırı bonusu kazan",
-            "💡 İttifak kurarak güçlü rakiplere karşı korun",
-            "💡 Diplomasi kartları strateji için çok önemlidir",
-            "💡 Teknoloji kartları uzun vadede güç kazandırır",
-            "💡 Saray'daki sivil sayısını 3'te tut",
-            "💡 Düşük HP'li binalara saldırarak kolay yıkım yap",
-            "💡 Askeri Gösteri kartı saldırıdan önce oyna",
-            "💡 Rakibin Pazar'ını yıkarak gelirini azalt",
-            "💡 Rakibin Kışla'sını yıkarak asker üretimini durdur",
-            "💡 Vassal olmak yerine direnmek bazen daha iyidir",
-            "💡 Altın havuzu doluysa gelir alamazsın, harca!",
-            "💡 Nifak Tohumu ile güçlü ittifakları boz",
-            "💡 Casusluk ile rakibin kartlarını çal",
-            "💡 Propaganda ile rakibin askerlerini ele geçir"
+            // Ekonomi
+            "💰 Çiftlik hem gelir hem gıda üretir — ilk kurulacak binalar arasında.",
+            "💰 Pazar her tur altın sağlar; Ticaret teknolojisiyle gelir katlanır.",
+            "💰 Her saldırı savaş gideri olarak 1 Altın tüketir — boşuna saldırma!",
+            "💰 Başarısız saldırı 2 Altın kaybettirir: 1 gider + 1 ceza.",
+            // Gıda & Huzursuzluk
+            "🍞 Kışladaki her asker 1 birim gıda tüketir — ordu büyüdükçe Çiftlik kur!",
+            "🍞 Huzursuzluk 4'e ulaşırsa askerler kaçar, 13'e ulaşırsa iç savaş çıkar.",
+            "🍞 Tarım teknolojisi gıda üretimini 6 katına kadar artırır.",
+            "🍞 Gıda fazlası huzursuzluğu yavaşça azaltır — dengeyi koru.",
+            // Askeri
+            "⚔️ Piyade + Okçu + Süvari + Kışla kombinasyonu %20 saldırı bonusu verir.",
+            "⚔️ Silah Atölyesi her tur kalıcı saldırı bonusu biriktirir.",
+            "⚔️ Düşen her asker silahını da götürür — Silah Atölyesi bonusu erir.",
+            "⚔️ Kışla yıkıldığında askerler esir düşer veya paralı askere dönüşür.",
+            "⚔️ Duvar yıkılmadan Saray'a ulaşamazsın.",
+            "⚔️ Savunma teknolojisi bina direncini 2.5 katına çıkarır.",
+            // Teknoloji
+            "🔬 Bilim Merkezi kurmadan teknoloji kartı kullanamazsın.",
+            "🔬 Bilim İnsanı sayısı teknoloji araştırma hızını belirler.",
+            "🔬 Silah teknolojisi tüm ordu gücünü çarpar — önce asker topla, sonra araştır.",
+            "🔬 Joker kartı ile istediğin teknolojiyi bir seviye atlayabilirsin.",
+            // Diplomasi & Vasal
+            "🤝 İttifak kurmak için karşı taraftan yüksek DP'ye sahip olmalısın.",
+            "🤝 Müttefikine saldırırsan 2 DP kaybeder, o 3 Altın kazanır.",
+            "🤝 Vasal olarak 4 bina kurup 8 Altın öder — bağımsızlığını geri alırsın.",
+            "🤝 Vasal iken saldırı yapamazsın ama bina inşa edebilirsin.",
+            "🤝 Nifak Tohumu güçlü ittifakları parçalar — tek başına kazanmak için kullan.",
+            "🤝 Beyaz Bayrak 2 tur saldırıya karşı koruma sağlar.",
+            // Strateji
+            "👑 Rakibin Pazar'ını yıkarak gelirini, Kışla'sını yıkarak asker üretimini durdur.",
+            "👑 Saray'ı korumak için önce Kışla, sonra Duvar inşa et.",
+            "👑 Hasarlı binaları Mimari Onarım kartıyla tamamen sıfırlayabilirsin.",
+            "👑 İlk 3 tur barış dönemi — bu süreyi bina kurmak ve ekonomi geliştirmek için kullan.",
+            "👑 Askeri Gösteri kartını saldırıdan hemen önce oyna: +3 güç bonusu kazanırsın."
         ];
         const randomTip = tips[Math.floor(Math.random() * tips.length)];
         if (window.renderer && window.renderer.showSubtitle) {
@@ -563,17 +586,9 @@ export class Game {
         console.log(`🎯 Turn ${this.turn}, Player Index ${this.activePlayerIndex}: ${nextPlayer.name} (Bot: ${nextPlayer.isBot}, Vassal: ${nextPlayer.isVassal})`);
 
         if (nextPlayer.isVassal) {
+            nextPlayer.actionsRemaining = 1;
             this.calculatePlayerIncome(nextPlayer);
-            nextPlayer.actionsRemaining = 0;
-            this.log(`⛓️ ${nextPlayer.name} (Vassal): Sıra pas geçildi.`);
-
-            setTimeout(() => {
-                this.isTurnTransitioning = false;
-                this.endTurn();
-                if (window.renderer) window.renderer.render();
-                if (window.mapRenderer) window.mapRenderer.render();
-            }, 1500);
-            return;
+            this.log(`⛓️ ${nextPlayer.name} (Vasal): 1 aksiyon — bağımsızlık için ${4 - nextPlayer.grid.filter((c,i)=>c&&i>0&&!c.isUnit).length} bina daha kur.`);
         } else {
             nextPlayer.actionsRemaining = 2;
             this.calculatePlayerIncome(nextPlayer);
@@ -753,6 +768,40 @@ export class Game {
         master.actionsRemaining -= 1;
         this.clearActionMode();
         this.log(`🔨 ${master.name}, ${vassal.name} topraklarındaki ${cell.type} binasını yıktı!`);
+        this.checkAutoEndTurn();
+        return { success: true };
+    }
+
+    declareIndependence() {
+        const player = this.getActivePlayer();
+        if (!player.isVassal) return { success: false, msg: "Zaten bağımsızsın!" };
+        if (player.actionsRemaining < 1) return { success: false, msg: "Aksiyon kalmadı!" };
+
+        const buildings = player.grid.filter((c, i) => c && i > 0 && !c.isUnit).length;
+        if (buildings < 4) {
+            return { success: false, msg: `Bağımsızlık için 4 bina gerekli! (Mevcut: ${buildings}/4)` };
+        }
+        if (player.gold < 8) {
+            return { success: false, msg: `Bağımsızlık bedeli 8 Altın! (Mevcut: ${player.gold})` };
+        }
+
+        const master = this.players.find(p => p.id === player.masterId);
+
+        player.gold -= 8;
+        player.isVassal = false;
+        player.masterId = null;
+        player.actionsRemaining -= 1;
+
+        if (master) {
+            master.gold += 8;
+            master.totalGoldEarned += 8;
+            master.dp = Math.max(1, master.dp - 3);
+            this.log(`💥 ${player.name} BAĞIMSIZLIĞINI İLAN ETTİ! Bedel: 8 Altın → ${master.name}. ${master.name}: -3 DP`);
+        } else {
+            this.log(`💥 ${player.name} BAĞIMSIZLIĞINI İLAN ETTİ!`);
+        }
+
+        this.log(`🎉 ${player.name} artık bağımsız bir krallık!`);
         this.checkAutoEndTurn();
         return { success: true };
     }

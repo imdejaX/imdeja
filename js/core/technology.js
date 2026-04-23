@@ -53,7 +53,8 @@ export const TechnologyMixin = {
             const techOptions = [
                 { type: 'military', name: 'Silah (Askeri Güç)', currentLevel: player.technologies.military },
                 { type: 'defense', name: 'Savunma (Bina HP)', currentLevel: player.technologies.defense },
-                { type: 'commerce', name: 'Ticaret (Pazar Geliri)', currentLevel: player.technologies.commerce }
+                { type: 'commerce', name: 'Ticaret (Pazar Geliri)', currentLevel: player.technologies.commerce },
+                { type: 'food', name: 'Tarım (Gıda Üretimi)', currentLevel: player.technologies.food }
             ];
             const availableTechs = techOptions.filter(t => t.currentLevel < 4);
 

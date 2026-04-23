@@ -12,10 +12,24 @@ export class BotAI {
         try {
             this.showBotThinking(player.name);
 
+            // Phase 0.5: Declare independence if vassal and conditions met
+            if (player.isVassal) {
+                console.log('⛓️ Phase 0.5: Independence check...');
+                const result = this.game.declareIndependence?.();
+                if (result && result.success) {
+                    this.game.log(`🤖 ${player.name} bağımsızlığını ilan etti!`);
+                    await this.delay(500);
+                }
+            }
+
             // Phase 1: Buy cards strategically
             console.log('🛒 Phase 1: Buying cards...');
             await this.delay(600);
             await this.buyCardsStrategic(player);
+
+            // Phase 1.5: Food emergency — buy Çiftlik if food deficit
+            console.log('🌾 Phase 1.5: Food check...');
+            await this.buyFoodIfNeeded(player);
 
             // Phase 2: Play diplomacy cards
             console.log('🎭 Phase 2: Playing diplomacy cards...');
@@ -27,15 +41,22 @@ export class BotAI {
             await this.delay(500);
             await this.playBuildings(player);
 
+            // Phase 3.5: Play technology cards
+            console.log('🔬 Phase 3.5: Technology cards...');
+            await this.delay(400);
+            await this.playTechCards(player);
+
             // Phase 4: Play soldiers
             console.log('⚔️ Phase 4: Playing soldiers...');
             await this.delay(400);
             await this.playSoldiers(player);
 
-            // Phase 5: Perform attacks
-            console.log('⚔️ Phase 5: Attacking...');
-            await this.delay(600);
-            await this.performAttacks(player);
+            // Phase 5: Perform attacks (vassal olamaz)
+            if (!player.isVassal) {
+                console.log('⚔️ Phase 5: Attacking...');
+                await this.delay(600);
+                await this.performAttacks(player);
+            }
 
             console.log(`✅ Bot ${player.name} finished turn`);
         } catch (error) {
@@ -235,33 +256,27 @@ export class BotAI {
     // Play soldiers from hand
     async playSoldiers(player) {
         try {
+            const hasBarracks = player.grid.some(c => c && c.type === 'Kışla');
+            if (!hasBarracks) return;
+
             let attempts = 0;
             while (player.actionsRemaining > 0 && attempts < 10) {
                 attempts++;
 
-                // Find a soldier in hand
                 let soldierIndex = -1;
                 for (let i = 0; i < player.hand.length; i++) {
-                    const card = player.hand[i];
-                    if (card && card.type === 'Asker') {
+                    if (player.hand[i] && player.hand[i].type === 'Asker') {
                         soldierIndex = i;
                         break;
                     }
                 }
-
                 if (soldierIndex === -1) break;
-
-                // Find empty slot
-                const emptySlot = player.grid.findIndex(c => c === null);
-                if (emptySlot === -1) break;
 
                 try {
                     const cardName = player.hand[soldierIndex].name;
-                    this.game.selectedCardIndex = soldierIndex;
-                    const result = this.game.buildOnSlot(emptySlot);
-
+                    const result = this.game.playAskerCard(soldierIndex);
                     if (result && result.success !== false) {
-                        this.game.log(`🤖 ${player.name} ${cardName} yerleştirdi`);
+                        this.game.log(`🤖 ${player.name} ${cardName} konuşlandırdı`);
                         await this.delay(400);
                     } else {
                         break;
@@ -380,6 +395,75 @@ export class BotAI {
     hideBotThinking() {
         // No overlay to hide anymore
         console.log(`🤖 Bot finished thinking`);
+    }
+
+    async playTechCards(player) {
+        try {
+            const hasSciCenter = player.grid.some(c => c && c.type === 'Bilim Merkezi');
+            if (!hasSciCenter) return;
+
+            const scientists = player.grid.reduce((sum, c) => {
+                if (c && c.type === 'Bilim Merkezi' && c.garrison) return sum + c.garrison.length;
+                return sum;
+            }, 0);
+            if (scientists < 1) return;
+
+            // Öncelik sırası: yüksek huzursuzlukta gıda, zayıf orduda askeri, yoksa savunma/ticaret
+            const unrest = player.unrest || 0;
+            const military = this.game.calculateMilitary(player);
+            let priority;
+            if (unrest >= 4) priority = 'food';
+            else if (military < 15) priority = 'military';
+            else if (player.technologies.defense < player.technologies.military) priority = 'defense';
+            else priority = 'commerce';
+
+            // El kartlarında uygun tech kartını bul
+            const techCards = player.hand
+                .map((card, index) => ({ card, index }))
+                .filter(({ card }) => card.type === 'Teknoloji' && !card.isJoker);
+
+            if (techCards.length === 0) return;
+
+            // Önce öncelikli techType, yoksa herhangi biri
+            let target = techCards.find(({ card }) => card.techType === priority);
+            if (!target) target = techCards[0];
+
+            if (!target || player.actionsRemaining < 1) return;
+            if (scientists < target.card.popCost) return;
+
+            const result = this.game.playTechnologyCard(target.index);
+            if (result && result.success !== false) {
+                this.game.log(`🤖 ${player.name} ${target.card.name} Lv${target.card.level} araştırdı`);
+                await this.delay(400);
+            }
+        } catch (error) {
+            console.error('playTechCards error:', error);
+        }
+    }
+
+    async buyFoodIfNeeded(player) {
+        try {
+            if (!this.game.calculateFoodBalance) return;
+            const { balance } = this.game.calculateFoodBalance(player);
+            const unrest = player.unrest || 0;
+            if (balance >= 0 && unrest < 4) return;
+
+            const market = this.game.openMarket;
+            for (let i = 0; i < market.length; i++) {
+                const card = market[i];
+                if (!card || card.name !== 'Çiftlik') continue;
+                if (player.gold >= card.cost && player.gold - card.cost >= 1) {
+                    const result = this.game.buyCard(i);
+                    if (result && result.success !== false) {
+                        this.game.log(`🤖 ${player.name} gıda açığı için Çiftlik satın aldı`);
+                        await this.delay(300);
+                    }
+                    break;
+                }
+            }
+        } catch (error) {
+            console.error('buyFoodIfNeeded error:', error);
+        }
     }
 
     delay(ms) {

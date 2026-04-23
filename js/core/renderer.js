@@ -92,8 +92,8 @@ export class Renderer {
             const goldAmount = document.getElementById('gold-amount');
             const capColor = totalGoldEarned >= totalGoldCap ? '#ef4444' : '#d4af37';
             if (goldAmount) {
-                goldAmount.textContent = `${activePlayer.gold}`;
-                goldAmount.style.color = capColor;
+                goldAmount.textContent = `${totalGoldEarned}`;
+                goldAmount.style.color = '#d4af37';
             } else {
                 goldDisplay.innerHTML = `<span style="color:${capColor};">💰 ${totalGoldEarned}/${totalGoldCap}</span>`;
             }

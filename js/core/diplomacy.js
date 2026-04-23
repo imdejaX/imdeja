@@ -42,8 +42,8 @@ export const DiplomacyMixin = {
                 switch (card.effect) {
 
                     case 'repair_building': {
-                        const allowedTypes = ['Kışla', 'Duvar', 'Çiftlik'];
-                        const maxHpValues = { 'Kışla': 6, 'Duvar': 6, 'Çiftlik': 5 };
+                        const allowedTypes = ['Kışla', 'Duvar', 'Çiftlik', 'Pazar', 'Bilim Merkezi', 'Silah Atölyesi'];
+                        const maxHpValues = { 'Kışla': 6, 'Duvar': 6, 'Çiftlik': 5, 'Pazar': 3, 'Bilim Merkezi': 4, 'Silah Atölyesi': 5 };
                         const damagedBuildings = player.grid.filter(c =>
                             c && allowedTypes.includes(c.type) && c.hp < maxHpValues[c.type]
                         );
@@ -339,7 +339,7 @@ export const DiplomacyMixin = {
         if (!target) return { success: false, msg: "Hedef bulunamadı!" };
         if (!target.isVassal) return { success: false, msg: "Hedef vasal değil!" };
         if (player.isVassal) return { success: false, msg: "Vasallar bağış yapamaz!" };
-        if (target.masterId === player.id) return { success: false, msg: "Kendi vasalına bağış yapamazsın!" };
+        if (target.masterId !== player.id) return { success: false, msg: "Sadece kendi vasalına bağış yapabilirsin!" };
 
         player.actionsRemaining -= 1;
 
