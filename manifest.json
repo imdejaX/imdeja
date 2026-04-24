@@ -1,8 +1,9 @@
 {
-  "name": "Krallıkların Terazisi",
-  "short_name": "KrallıkTerazisi",
+  "name": "Kralların Terazisi",
+  "short_name": "KralTerazisi",
   "description": "Strateji tabanlı çok oyunculu kart oyunu",
-  "start_url": "/",
+  "start_url": "./menu.html",
+  "scope": "./",
   "display": "standalone",
   "orientation": "landscape",
   "background_color": "#0a0a0f",

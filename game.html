@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Kralların Terazisi</title>
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="map.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -150,7 +150,7 @@
     <script>
         // Service Worker kaydı
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(() => {});
+            navigator.serviceWorker.register('./sw.js').catch(() => {});
         }
         // Log paneli toggle
         document.getElementById('log-toggle').addEventListener('click', () => {

@@ -198,7 +198,16 @@ export const EconomyMixin = {
             }
         }
 
-        // 11. Food balance & unrest check
+        // 11. İttifak DP bonusu (her 4 turda bir)
+        if (p.allianceWith !== null && p.allianceWith !== undefined && this.turn % 4 === 0) {
+            const ally = this.players.find(a => a.id === p.allianceWith);
+            if (ally && !ally.isVassal) {
+                p.dp += 1;
+                this.log(`🤝 ${p.name} ittifak bonusu: +1 DP`);
+            }
+        }
+
+        // 12. Food balance & unrest check
         this.checkFoodAndUnrest(p);
     },
 

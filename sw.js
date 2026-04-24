@@ -1,14 +1,14 @@
-const CACHE = 'kral-v31';
+const CACHE = 'kral-v32';
 const ASSETS = [
-  '/', '/menu.html', '/game.html',
-  '/map.css', '/menu-style.css',
-  '/harita.png',
-  '/js/main.js',
-  '/js/core/game.js', '/js/core/renderer.js', '/js/core/mapRenderer.js',
-  '/js/core/modalRenderer.js', '/js/core/attackAnimator.js',
-  '/js/core/combat.js', '/js/core/economy.js', '/js/core/diplomacy.js',
-  '/js/core/technology.js', '/js/core/combatCalculator.js',
-  '/js/core/bot.js', '/js/core/soundManager.js', '/js/core/soundIntegration.js'
+  './', './menu.html', './game.html',
+  './map.css', './menu-style.css',
+  './harita.png',
+  './js/main.js',
+  './js/core/game.js', './js/core/renderer.js', './js/core/mapRenderer.js',
+  './js/core/modalRenderer.js', './js/core/attackAnimator.js',
+  './js/core/combat.js', './js/core/economy.js', './js/core/diplomacy.js',
+  './js/core/technology.js', './js/core/combatCalculator.js',
+  './js/core/bot.js', './js/core/soundManager.js', './js/core/soundIntegration.js'
 ];
 
 self.addEventListener('install', e => {

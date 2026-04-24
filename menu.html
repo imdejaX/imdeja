@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kralların Terazisi</title>
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -603,7 +603,7 @@ $('start-local').addEventListener('click',()=>{
   window.location.href='game.html';
 });
 
-if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script>
 </body>
 </html>

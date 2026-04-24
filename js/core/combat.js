@@ -750,6 +750,12 @@ export const CombatMixin = {
         const techMultipliers = [1, 1.2, 1.5, 2, 2.5];
         basePower = Math.floor(basePower * techMultipliers[player.technologies.military]);
 
+        // İttifak askeri bonusu
+        if (player.allianceWith !== null && player.allianceWith !== undefined) {
+            const ally = this.players.find(p => p.id === player.allianceWith);
+            if (ally && !ally.isVassal) basePower += 5;
+        }
+
         return basePower;
     },
 
